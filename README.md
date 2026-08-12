@@ -1,7 +1,7 @@
 # Compagnon JS-Innov.IA — Assets & Vidéos Premium
 
 **Phénix Companion officiel** de la marque **JS-Innov.IA**  
-Créé par Julien Pépin — [www.jsinnovia.com](https://www.jsinnovia.com)
+Créé par **Julien Pagin** — [www.jsinnovia.com](https://www.jsinnovia.com)
 
 ## 🎬 Contenu du projet
 
@@ -61,4 +61,4 @@ Ce dépôt GitHub contient la documentation et les assets légers. Les vidéos c
 
 ---
 **JS-Innov.IA®** — L’intelligence qui élève vos idées  
-© Julien Pépin / Js-Innov.IA
+© Julien Pagin / Js-Innov.IA
