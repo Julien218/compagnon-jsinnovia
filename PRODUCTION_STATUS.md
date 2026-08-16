@@ -20,11 +20,14 @@ Current registry: `assets/turnaround/GENERATED_ASSETS.json`
 ## Shape generation
 
 - [x] Hunyuan3D 2.1 pipeline selected
-- [x] Executable ComfyUI workflow added: `workflows/comfyui/elyna_hunyuan3d_shape.json`
+- [x] Executable ComfyUI UI workflow added: `workflows/comfyui/elyna_hunyuan3d_shape.json`
+- [x] Executable ComfyUI API prompt added: `workflows/comfyui/elyna_hunyuan3d_shape_api.json`
 - [x] Diagnostic preset defined (1024)
 - [x] Production candidate preset defined (2048)
 - [x] Verified checkpoint installer added: `scripts/setup_hunyuan3d_checkpoint.ps1`
-- [ ] Raw Elyna GLB generated and reviewed
+- [x] One-command API runner added: `scripts/run_elyna_comfyui.ps1`
+- [x] Runner validates checkpoint SHA256, ComfyUI connectivity and required Hunyuan3D nodes before submission
+- [ ] Raw Elyna GLB generated and reviewed on real Hunyuan3D compute
 
 ## Blender / animation
 
@@ -48,15 +51,16 @@ Current registry: `assets/turnaround/GENERATED_ASSETS.json`
 
 ## Blocking item
 
-The only blocking asset for actual 3D activation is a real generated, cleaned, rigged and validated VRM. A rendered image or placeholder file must never be renamed to `.vrm`.
+The remaining blocking asset for actual 3D activation is a real generated, cleaned, rigged and validated VRM. A rendered image, dummy mesh or placeholder file must never be renamed to `.vrm`.
 
 ## Execution order
 
-1. Install/verify `hunyuan_3d_v2.1.safetensors` with the PowerShell setup script.
-2. Put the canonical reference in `ComfyUI/input/`.
-3. Import the repository ComfyUI workflow.
-4. Run the 1024 diagnostic shape preset.
-5. If geometry is faithful, run the 2048 production candidate.
-6. Move the chosen GLB to Blender for cleanup, retopology and rigging.
-7. Export VRM and run the website validation gate.
-8. Activate 3D only after desktop/mobile smoke tests pass.
+1. Install/verify `hunyuan_3d_v2.1.safetensors` with `scripts/setup_hunyuan3d_checkpoint.ps1`.
+2. Start ComfyUI.
+3. Keep `00_phenix_companion_officiel_reference.png` or `elyna-reference.png` in `ComfyUI/input/`.
+4. Run `scripts/run_elyna_comfyui.ps1 -Preset diagnostic`.
+5. Review the 1024 raw GLB against the canonical phoenix reference.
+6. Only if the diagnostic is stable and faithful, run `scripts/run_elyna_comfyui.ps1 -Preset production`.
+7. Move the chosen GLB to Blender for cleanup, retopology and rigging.
+8. Export VRM and run the website validation gate.
+9. Activate 3D only after desktop/mobile smoke tests pass.
