@@ -1,64 +1,120 @@
-# Compagnon JS-Innov.IA — Assets & Vidéos Premium
+# Compagnon JS-Innov.IA — Elyna 3D & Assets Premium
 
 **Phénix Companion officiel** de la marque **JS-Innov.IA**  
-Créé par **Julien Pagin** — [www.jsinnovia.com](https://www.jsinnovia.com)
+Créé par **Julien Pagin** — www.jsinnovia.com
 
-## 🎬 Contenu du projet
+Ce dépôt devient la **source de vérité technique** du Compagnon JS-Innov.IA / Elyna : identité, règles visuelles, pipeline 3D, manifests runtime et contrat des assets.
 
-### 1. Ouverture cinématique immersive (42 s)
-Séquences générées séparément puis assemblées :
+## Référence canonique
 
-| Fichier | Description | Durée |
-|---------|-------------|-------|
-| `00_ouverture_cinematique_complete_42s.mp4` | Vidéo complète assemblée | 42 s |
-| `01_le_signal_6s.mp4` | Plan 1 — Le Signal | 6 s |
-| `02_l_apparition_7s.mp4` | Plan 2 — L’Apparition | 7 s |
-| `03_la_rencontre_7s.mp4` | Plan 3 — La Rencontre | 7 s |
-| `04_l_univers_se_revele_8s.mp4` | Plan 4 — L’Univers se révèle | 8 s |
-| `05_les_creations_prennent_vie_8s.mp4` | Plan 5 — Les Créations prennent vie | 8 s |
-| `06_la_promesse_finale_6s.mp4` | Plan 6 — La Promesse finale | 6 s |
+La référence visuelle officielle reste :
 
-### 2. Vidéo publicitaire cinématographique premium (35 s)
-| Fichier | Description | Durée |
-|---------|-------------|-------|
-| `JSInnovIA_Compagnon_Pub_Cinematique_35s.mp4` | **Pub complète** (musique électronique cinématique) | ~35 s |
-| `pub_01_logo_formation_5s.mp4` | Formation logo | 5 s |
-| `pub_02_apparition_compagnon_6s.mp4` | Apparition + geste de bienvenue | 6 s |
-| `pub_03_hologrammes_6s.mp4` | Interfaces hologrammes | 6 s |
-| `pub_04_chatbot_interface_7s.mp4` | Site + chatbot | 7 s |
-| `pub_05_multi_ecrans_6s.mp4` | Montage multi-écrans (avatar strict) | 6 s |
-| `pub_06_promesse_finale_5s.mp4` | Plan final + espace CTA | 5 s |
+- `00_phenix_companion_officiel_reference.png`
+- Google Drive file ID : `1y96GHd7_du62CNAIS9fZCUZsra7xKAto`
 
-### 3. Référence officielle
-- `00_phenix_companion_officiel_reference.png` — Multi-vues du design 3D mature, élégant, rassurant
+Les médias binaires sont actuellement conservés dans Google Drive. GitHub stocke les spécifications et fichiers techniques ; les vidéos lourdes doivent rester sur Drive ou être publiées via Releases/LFS.
 
-## 🎨 Design du Compagnon (règles strictes)
-- Visage mature, élégant, humain, rassurant
-- Casque noir/or + microphone + logo JS
-- Armure blanche / bleu nuit / or
-- Ailes iridescentes : cyan, bleu électrique, violet, magenta, or
-- Emblème central « S »
-- Style 3D ultra-réaliste haut de gamme (jamais enfantin, cartoon, kawaii ou jouet)
-- Univers : nuit bleu profond, particules, lumières cyan/violet/or, ambiance film futuriste premium
+## Structure
 
-## 📐 Specs techniques
-- Format : **16:9** • **1280×720** (prêt pour upscale 1080p/4K)
-- Framerate : 24 fps
-- Codec : H.264 + AAC
-- Éclairage cinématographique, profondeur de champ, mouvements de caméra lents et professionnels
+```text
+config/
+  elyna-3d.manifest.json
 
-## 📂 Structure locale
-Les fichiers binaires (vidéos MP4) sont générés dans le sandbox Grok et disponibles dans le dossier de projet.  
-Ce dépôt GitHub contient la documentation et les assets légers. Les vidéos complètes peuvent être ajoutées en **GitHub Releases** (recommandé pour les fichiers > 50 Mo) ou via Git LFS.
+docs/
+  CHARACTER_SHEET.md
+  TURNAROUND_SPEC.md
+  3D_PIPELINE.md
 
-## 🚀 Utilisation
-1. Ajouter VO (voix off)
-2. Superposer logo JS-Innov.IA + textes :
-   - « Compagnon JS-Innov.IA »
-   - « L’intelligence qui élève vos idées »
-   - « Automatisations intelligentes amplifiées par l’HUMAIN »
-3. CTA final
+assets/
+  reference/
+    README.md
+  turnaround/
+    README.md
+
+README.md
+RELEASE_NOTES_v1.0.md
+STRUCTURE.md
+```
+
+## ADN visuel
+
+- Phénix Companion 3D premium
+- visage mature, élégant et rassurant
+- casque noir/or + microphone + marquage JS
+- armure ivoire / bleu nuit / or
+- emblème S sur la poitrine
+- ailes iridescentes cyan → bleu électrique → violet → magenta → or
+- jamais cartoon, kawaii, jouet, enfantin ou robot générique
+
+Voir `docs/CHARACTER_SHEET.md`.
+
+## Pipeline 3D
+
+```text
+Référence canonique
+  ↓
+Turnaround front / left / back / right
+  ↓
+Hunyuan3D 2.1 / ComfyUI
+  ↓
+GLB brut
+  ↓
+Blender : cleanup + retopo + UV + matériaux + rig
+  ↓
+Expressions / lipsync / animations
+  ↓
+VRM optimisé
+  ↓
+Three.js / React Three Fiber / Cockpit JS-Innov.IA
+```
+
+Configuration locale de départ validée sur RTX A3000 6 Go :
+
+- Hunyuan3D 2.1
+- latent `2048`
+- batch `1`
+- steps `12`
+- CFG `5`
+- octree `128`
+
+Voir `docs/3D_PIPELINE.md` et `docs/TURNAROUND_SPEC.md`.
+
+## Turnaround canonique attendu
+
+```text
+assets/turnaround/elyna_front.png
+assets/turnaround/elyna_left.png
+assets/turnaround/elyna_back.png
+assets/turnaround/elyna_right.png
+```
+
+Ces fichiers ne doivent être ajoutés qu'après validation visuelle. Une vue miroir qui déplace le microphone ou les asymétries n'est pas acceptable.
+
+## Runtime cible
+
+Le manifeste `config/elyna-3d.manifest.json` définit notamment :
+
+- format runtime VRM
+- `@pixiv/three-vrm`
+- poids cible <= 15 MiB
+- fallback 2D obligatoire
+- états idle, listening, thinking, speaking, greeting, presenting, success et error
+- expressions minimales `blink` et `aa`
+
+## Assets existants sur Drive
+
+Le kit source comprend notamment :
+
+- full-body idle / wave / welcome / holograms
+- bust idle / speaking / thinking
+- animations idle, greeting, welcome, holograms et promise
+- vidéos cinématiques et publicitaires
+- `avatar_config.json`
+- Character Sheet et guide d'intégration
+
+Les vidéos sont des références d'animation ; elles ne doivent pas redéfinir la géométrie canonique du personnage.
 
 ---
-**JS-Innov.IA®** — L’intelligence qui élève vos idées  
-© Julien Pagin / Js-Innov.IA
+
+**JS-Innov.IA® — L’intelligence qui élève vos idées**  
+© Julien Pagin / JS-Innov.IA
