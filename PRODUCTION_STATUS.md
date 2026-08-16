@@ -26,7 +26,9 @@ Current registry: `assets/turnaround/GENERATED_ASSETS.json`
 - [x] Production candidate preset defined (2048)
 - [x] Verified checkpoint installer added: `scripts/setup_hunyuan3d_checkpoint.ps1`
 - [x] One-command API runner added: `scripts/run_elyna_comfyui.ps1`
-- [x] Runner validates checkpoint SHA256, ComfyUI connectivity and required Hunyuan3D nodes before submission
+- [x] Windows bootstrap added: `scripts/bootstrap_elyna_3d.ps1`
+- [x] Bootstrap can install/verify the checkpoint, start the NVIDIA portable ComfyUI launcher, wait for the API, validate required nodes and run the selected preset
+- [x] Windows quickstart added: `QUICKSTART_WINDOWS.md`
 - [ ] Raw Elyna GLB generated and reviewed on real Hunyuan3D compute
 
 ## Blender / animation
@@ -51,16 +53,14 @@ Current registry: `assets/turnaround/GENERATED_ASSETS.json`
 
 ## Blocking item
 
-The remaining blocking asset for actual 3D activation is a real generated, cleaned, rigged and validated VRM. A rendered image, dummy mesh or placeholder file must never be renamed to `.vrm`.
+All repository-side automation required to launch the shape-generation stage is ready. The remaining blocker for actual 3D activation is a real generated, reviewed, cleaned, rigged and validated VRM. A rendered image, dummy mesh or placeholder file must never be renamed to `.vrm`.
 
 ## Execution order
 
-1. Install/verify `hunyuan_3d_v2.1.safetensors` with `scripts/setup_hunyuan3d_checkpoint.ps1`.
-2. Start ComfyUI.
-3. Keep `00_phenix_companion_officiel_reference.png` or `elyna-reference.png` in `ComfyUI/input/`.
-4. Run `scripts/run_elyna_comfyui.ps1 -Preset diagnostic`.
-5. Review the 1024 raw GLB against the canonical phoenix reference.
-6. Only if the diagnostic is stable and faithful, run `scripts/run_elyna_comfyui.ps1 -Preset production`.
-7. Move the chosen GLB to Blender for cleanup, retopology and rigging.
-8. Export VRM and run the website validation gate.
-9. Activate 3D only after desktop/mobile smoke tests pass.
+1. From the repository root, run `scripts/bootstrap_elyna_3d.ps1 -Preset diagnostic`.
+2. Let the bootstrap verify/install the checkpoint and start/wait for ComfyUI if necessary.
+3. Review the generated 1024 raw GLB against the canonical phoenix reference.
+4. Only if the diagnostic is stable and faithful, run `scripts/bootstrap_elyna_3d.ps1 -Preset production`.
+5. Move the chosen GLB to Blender for cleanup, retopology and rigging.
+6. Export VRM and run the website validation gate.
+7. Activate 3D only after desktop/mobile smoke tests pass.
