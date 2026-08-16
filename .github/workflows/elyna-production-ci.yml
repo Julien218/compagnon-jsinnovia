@@ -1,0 +1,63 @@
+name: Elyna Production CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-production-assets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate repository contracts
+        run: python scripts/validate_repository.py
+
+      - name: Validate PowerShell syntax
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'scripts/setup_hunyuan3d_checkpoint.ps1'),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+
+      - name: Validate JSON syntax
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for path in Path('.').rglob('*.json'):
+              with path.open('r', encoding='utf-8') as f:
+                  json.load(f)
+              print(f'OK {path}')
+          PY
+
+      - name: Verify required production files
+        run: |
+          test -f config/elyna-3d.manifest.json
+          test -f config/source-assets.json
+          test -f config/comfyui_presets.json
+          test -f workflows/comfyui/elyna_hunyuan3d_shape.json
+          test -f scripts/setup_hunyuan3d_checkpoint.ps1
+          test -f PRODUCTION_STATUS.md

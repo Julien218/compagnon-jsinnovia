@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "1.0.0",
+  "checkpoint": "hunyuan_3d_v2.1.safetensors",
+  "workflow": "workflows/comfyui/elyna_hunyuan3d_shape.json",
+  "presets": {
+    "diagnostic_low_vram": {
+      "latentResolution": 1024,
+      "batchSize": 1,
+      "steps": 12,
+      "cfg": 5.0,
+      "sampler": "euler",
+      "scheduler": "normal",
+      "octreeResolution": 128,
+      "voxelThreshold": 0.7,
+      "purpose": "Validate geometry and pipeline before increasing quality."
+    },
+    "production_shape": {
+      "latentResolution": 2048,
+      "batchSize": 1,
+      "steps": 12,
+      "cfg": 5.0,
+      "sampler": "euler",
+      "scheduler": "normal",
+      "octreeResolution": 128,
+      "voxelThreshold": 0.7,
+      "purpose": "Production geometry candidate after the diagnostic preset succeeds."
+    }
+  },
+  "notes": [
+    "Start with diagnostic_low_vram.",
+    "Do not treat a raw generated GLB as production-ready VRM.",
+    "Retopology, rigging, expressions, skinning and VRM export remain mandatory after shape generation.",
+    "Keep the canonical reference unchanged during geometry validation."
+  ]
+}
