@@ -32,7 +32,8 @@ jobs:
         run: |
           $files = @(
             'scripts/setup_hunyuan3d_checkpoint.ps1',
-            'scripts/run_elyna_comfyui.ps1'
+            'scripts/run_elyna_comfyui.ps1',
+            'scripts/bootstrap_elyna_3d.ps1'
           )
           foreach ($file in $files) {
             $tokens = $null
@@ -69,4 +70,5 @@ jobs:
           test -f workflows/comfyui/elyna_hunyuan3d_shape_api.json
           test -f scripts/setup_hunyuan3d_checkpoint.ps1
           test -f scripts/run_elyna_comfyui.ps1
+          test -f scripts/bootstrap_elyna_3d.ps1
           test -f PRODUCTION_STATUS.md
