@@ -10,7 +10,6 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$repoRoot = Split-Path -Parent $PSScriptRoot
 $setupScript = Join-Path $PSScriptRoot 'setup_hunyuan3d_checkpoint.ps1'
 $runnerScript = Join-Path $PSScriptRoot 'run_elyna_comfyui.ps1'
 $baseUrl = "http://$ServerAddress"
@@ -28,8 +27,7 @@ function Find-ComfyUILauncher([string]$Root) {
     $portableRoot = Split-Path -Parent $Root
     $candidates = @(
         (Join-Path $portableRoot 'run_nvidia_gpu.bat'),
-        (Join-Path $portableRoot 'run_nvidia_gpu_fast_fp16_accumulation.bat'),
-        (Join-Path $portableRoot 'run_cpu.bat')
+        (Join-Path $portableRoot 'run_nvidia_gpu_fast_fp16_accumulation.bat')
     )
 
     foreach ($candidate in $candidates) {
@@ -61,13 +59,10 @@ if (-not (Test-Path -LiteralPath $runnerScript -PathType Leaf)) {
 }
 
 Write-Host '[1/4] Checkpoint Hunyuan3D 2.1' -ForegroundColor Cyan
-$setupArgs = @('-ComfyUIRoot', $ComfyUIRoot)
 if ($ForceCheckpoint) {
-    $setupArgs += '-Force'
-}
-& $setupScript @setupArgs
-if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
-    throw "Checkpoint setup failed with exit code $LASTEXITCODE."
+    & $setupScript -ComfyUIRoot $ComfyUIRoot -Force
+} else {
+    & $setupScript -ComfyUIRoot $ComfyUIRoot
 }
 
 Write-Host ''
@@ -75,7 +70,7 @@ Write-Host '[2/4] ComfyUI API' -ForegroundColor Cyan
 if (-not (Test-ComfyUIApi)) {
     $launcher = Find-ComfyUILauncher $ComfyUIRoot
     if (-not $launcher) {
-        throw "ComfyUI is not running and no portable launcher was found next to $ComfyUIRoot. Start ComfyUI manually, then rerun this script."
+        throw "ComfyUI is not running and no NVIDIA portable launcher was found next to $ComfyUIRoot. Start ComfyUI manually, then rerun this script."
     }
 
     $workingDirectory = Split-Path -Parent $launcher
@@ -100,9 +95,6 @@ Write-Host 'ComfyUI API: ready' -ForegroundColor Green
 Write-Host ''
 Write-Host '[3/4] Elyna Hunyuan3D generation' -ForegroundColor Cyan
 & $runnerScript -Preset $Preset -ServerAddress $ServerAddress -ComfyUIRoot $ComfyUIRoot -TimeoutMinutes $RunTimeoutMinutes
-if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) {
-    throw "Elyna runner failed with exit code $LASTEXITCODE."
-}
 
 Write-Host ''
 Write-Host '[4/4] Pipeline stage complete' -ForegroundColor Green
