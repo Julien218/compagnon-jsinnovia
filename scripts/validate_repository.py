@@ -90,6 +90,7 @@ def main() -> None:
     required_paths = [
         "scripts/setup_hunyuan3d_checkpoint.ps1",
         "scripts/run_elyna_comfyui.ps1",
+        "scripts/bootstrap_elyna_3d.ps1",
         "workflows/comfyui/elyna_hunyuan3d_shape.json",
         "workflows/comfyui/elyna_hunyuan3d_shape_api.json",
     ]
