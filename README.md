@@ -41,9 +41,12 @@ assets/
 workflows/
   comfyui/
     elyna_hunyuan3d_shape.json
+    elyna_hunyuan3d_shape_api.json
 
 scripts/
   setup_hunyuan3d_checkpoint.ps1
+  run_elyna_comfyui.ps1
+  validate_repository.py
 
 PRODUCTION_STATUS.md
 README.md
@@ -83,9 +86,10 @@ VRM optimisé
 Three.js / React Three Fiber / Cockpit JS-Innov.IA
 ```
 
-Le dépôt fournit maintenant un workflow ComfyUI exécutable :
+Le dépôt fournit deux représentations du même workflow :
 
-`workflows/comfyui/elyna_hunyuan3d_shape.json`
+- `workflows/comfyui/elyna_hunyuan3d_shape.json` — workflow graphique importable dans ComfyUI ;
+- `workflows/comfyui/elyna_hunyuan3d_shape_api.json` — prompt API destiné au runner PowerShell.
 
 Deux profils sont définis dans `config/comfyui_presets.json` :
 
@@ -108,6 +112,32 @@ Le script :
 
 installe le checkpoint dans `ComfyUI/models/checkpoints/` et vérifie son SHA256 avant utilisation.
 
+## Exécution locale en une commande
+
+Une fois le checkpoint installé et ComfyUI démarré sur `127.0.0.1:8188` :
+
+```powershell
+.\scripts\run_elyna_comfyui.ps1 -Preset diagnostic
+```
+
+Le runner :
+
+1. vérifie le checkpoint et son SHA256 ;
+2. accepte `00_phenix_companion_officiel_reference.png` ou copie automatiquement `elyna-reference.png` sous le nom canonique ;
+3. vérifie que l’API ComfyUI répond ;
+4. vérifie que tous les nœuds Hunyuan3D nécessaires existent via `/object_info` ;
+5. soumet le prompt API via `/prompt` ;
+6. attend la fin via `/history/{prompt_id}` ;
+7. recherche les nouveaux `.glb` dans `ComfyUI/output` et affiche leurs chemins.
+
+Après réussite du diagnostic uniquement, le candidat 2048 peut être tenté avec :
+
+```powershell
+.\scripts\run_elyna_comfyui.ps1 -Preset production
+```
+
+Un GLB généré par cette commande reste un **mesh brut**. Il ne doit jamais être renommé artificiellement en `.vrm` ni activé sur le site avant nettoyage, retopologie, rig, expressions et validation.
+
 ## Turnaround canonique attendu
 
 ```text
@@ -117,7 +147,7 @@ assets/turnaround/elyna_back.png
 assets/turnaround/elyna_right.png
 ```
 
-Ces fichiers ne doivent être ajoutés qu’après validation visuelle. Une vue miroir qui déplace le microphone ou les asymétries n’est pas acceptable.
+Ces fichiers ne doivent être ajoutés qu’après validation visuelle. Une vue miroir qui déplace le microphone ou les asymétries n'est pas acceptable.
 
 Le registre actuel est `assets/turnaround/GENERATED_ASSETS.json`. Il indique que les vues ont été générées mais que les binaires doivent encore être uploadés et validés.
 
@@ -125,23 +155,23 @@ Le registre actuel est `assets/turnaround/GENERATED_ASSETS.json`. Il indique que
 
 Le manifeste `config/elyna-3d.manifest.json` définit notamment :
 
-- format runtime VRM
-- `@pixiv/three-vrm`
-- poids cible <= 15 MiB
-- fallback 2D obligatoire
-- états idle, listening, thinking, speaking, greeting, presenting, success et error
-- expressions minimales `blink` et `aa`
+- format runtime VRM ;
+- `@pixiv/three-vrm` ;
+- poids cible <= 15 MiB ;
+- fallback 2D obligatoire ;
+- états idle, listening, thinking, speaking, greeting, presenting, success et error ;
+- expressions minimales `blink` et `aa`.
 
 ## Assets existants sur Drive
 
 Le kit source comprend notamment :
 
-- full-body idle / wave / welcome / holograms
-- bust idle / speaking / thinking
-- animations idle, greeting, welcome, holograms et promise
-- vidéos cinématiques et publicitaires
-- `avatar_config.json`
-- Character Sheet et guide d'intégration
+- full-body idle / wave / welcome / holograms ;
+- bust idle / speaking / thinking ;
+- animations idle, greeting, welcome, holograms et promise ;
+- vidéos cinématiques et publicitaires ;
+- `avatar_config.json` ;
+- Character Sheet et guide d'intégration.
 
 Les vidéos sont des références d’animation ; elles ne doivent pas redéfinir la géométrie canonique du personnage.
 

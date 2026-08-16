@@ -30,16 +30,23 @@ jobs:
       - name: Validate PowerShell syntax
         shell: pwsh
         run: |
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile(
-            (Resolve-Path 'scripts/setup_hunyuan3d_checkpoint.ps1'),
-            [ref]$tokens,
-            [ref]$errors
-          ) | Out-Null
-          if ($errors.Count -gt 0) {
-            $errors | ForEach-Object { Write-Error $_.Message }
-            exit 1
+          $files = @(
+            'scripts/setup_hunyuan3d_checkpoint.ps1',
+            'scripts/run_elyna_comfyui.ps1'
+          )
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path $file),
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error "${file}: $($_.Message)" }
+              exit 1
+            }
+            Write-Host "OK $file"
           }
 
       - name: Validate JSON syntax
@@ -59,5 +66,7 @@ jobs:
           test -f config/source-assets.json
           test -f config/comfyui_presets.json
           test -f workflows/comfyui/elyna_hunyuan3d_shape.json
+          test -f workflows/comfyui/elyna_hunyuan3d_shape_api.json
           test -f scripts/setup_hunyuan3d_checkpoint.ps1
+          test -f scripts/run_elyna_comfyui.ps1
           test -f PRODUCTION_STATUS.md
