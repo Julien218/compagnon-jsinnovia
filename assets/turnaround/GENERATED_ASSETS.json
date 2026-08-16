@@ -1,0 +1,46 @@
+{
+  "schemaVersion": "1.0.0",
+  "character": "Elyna",
+  "generatedAt": "2026-08-16",
+  "status": "generated-pending-binary-upload-and-validation",
+  "sourceOfTruth": "00_phenix_companion_officiel_reference.png",
+  "generation": {
+    "engine": "OpenAI image generation",
+    "masterDimensions": "1024x1536",
+    "format": "PNG RGBA",
+    "background": "transparent",
+    "pose": "neutral turnaround / A-pose"
+  },
+  "views": {
+    "front": {
+      "canonicalName": "elyna_front.png",
+      "masterSha256": "4ecff4f6272fe84d7786e62e3a8a7550ba1a06187cde3e4955464b846c56463c",
+      "status": "generated-pending-validation"
+    },
+    "left": {
+      "canonicalName": "elyna_left.png",
+      "masterSha256": "89963ed0c106d0e01102d3655bf324ffa685f0a4eff4625960282dae863b2700",
+      "status": "generated-pending-validation"
+    },
+    "back": {
+      "canonicalName": "elyna_back.png",
+      "masterSha256": "589b3281360c61da63706f32c7ee2ed49588ac7ee21345cdeda315ffc8dbf47f",
+      "status": "generated-pending-validation"
+    },
+    "right": {
+      "canonicalName": "elyna_right.png",
+      "masterSha256": "504cbe6197ec2f9729b48d65527b106edc606819db99dd39f7acc47ed639be1e",
+      "status": "generated-pending-validation"
+    }
+  },
+  "validationRules": [
+    "same-scale",
+    "same-pose",
+    "same-design",
+    "preserve-headset-microphone-asymmetry",
+    "preserve-JS-headset-mark",
+    "preserve-S-chest-emblem",
+    "preserve-iridescent-wing-palette",
+    "no-mirroring-as-canonical-source"
+  ]
+}
