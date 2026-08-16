@@ -35,7 +35,14 @@
   },
   "turnaround": {
     "requiredViews": ["front", "left", "back", "right"],
-    "status": "in-preparation",
+    "status": "generated-pending-validation",
+    "registry": "assets/turnaround/GENERATED_ASSETS.json",
+    "canonicalNames": {
+      "front": "elyna_front.png",
+      "left": "elyna_left.png",
+      "back": "elyna_back.png",
+      "right": "elyna_right.png"
+    },
     "rules": {
       "sameScale": true,
       "samePose": true,
