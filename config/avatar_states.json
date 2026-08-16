@@ -1,0 +1,41 @@
+{
+  "name": "Compagnon JS-Innov.IA",
+  "alias": "Elyna",
+  "creator": "Julien Pagin",
+  "version": "1.1.0",
+  "states": {
+    "idle": {
+      "image": "cutouts/companion_bust_idle.png",
+      "animation": "animations/idle_loop_6s.mp4"
+    },
+    "speaking": {
+      "image": "cutouts/companion_bust_speaking.png"
+    },
+    "thinking": {
+      "image": "cutouts/companion_bust_thinking.png"
+    },
+    "greeting": {
+      "image": "cutouts/companion_fullbody_wave.png",
+      "animation": "animations/wave_greet_6s.mp4"
+    },
+    "welcome": {
+      "animation": "animations/welcome_8s.mp4"
+    },
+    "presenting": {
+      "image": "cutouts/companion_fullbody_holograms.png",
+      "animation": "animations/holograms_8s.mp4"
+    },
+    "success": {
+      "animation": "animations/promise_8s.mp4"
+    }
+  },
+  "colors": {
+    "primary": "#00E5FF",
+    "gold": "#D4AF37",
+    "night": "#0A1A2F"
+  },
+  "recommendedSize": {
+    "desktop": "180-220px",
+    "mobile": "120-160px"
+  }
+}
