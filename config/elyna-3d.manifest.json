@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "elyna",
+  "displayName": "Compagnon JS-Innov.IA",
+  "alias": "Elyna",
+  "brand": "JS-Innov.IA",
+  "creator": "Julien Pagin",
+  "canonicalReference": {
+    "fileName": "00_phenix_companion_officiel_reference.png",
+    "googleDriveFileId": "1y96GHd7_du62CNAIS9fZCUZsra7xKAto",
+    "status": "canonical"
+  },
+  "design": {
+    "type": "premium-3d-phoenix-companion",
+    "maturity": "mature-elegant-reassuring",
+    "forbiddenStyles": ["cartoon", "kawaii", "toy", "childlike", "generic-robot"],
+    "requiredElements": [
+      "golden-crest",
+      "golden-beak",
+      "black-gold-headset",
+      "microphone",
+      "JS-headset-mark",
+      "ivory-night-blue-gold-armor",
+      "S-chest-emblem",
+      "iridescent-wings"
+    ],
+    "colors": {
+      "ivory": "#F5F1E8",
+      "gold": "#D4AF37",
+      "night": "#0A1A2F",
+      "cyan": "#00E5FF",
+      "violet": "#9B5DE5",
+      "magenta": "#F15BB5"
+    }
+  },
+  "turnaround": {
+    "requiredViews": ["front", "left", "back", "right"],
+    "status": "in-preparation",
+    "rules": {
+      "sameScale": true,
+      "samePose": true,
+      "sameDesign": true,
+      "neutralBackground": true,
+      "preserveAsymmetry": true,
+      "doNotMirrorHeadsetMicrophone": true
+    }
+  },
+  "generation": {
+    "engine": "Hunyuan3D 2.1 via ComfyUI",
+    "checkpoint": "hunyuan_3d_v2.1.safetensors",
+    "baseline": {
+      "resolution": 2048,
+      "batchSize": 1,
+      "steps": 12,
+      "cfg": 5.0,
+      "octreeResolution": 128
+    }
+  },
+  "delivery": {
+    "sourceMesh": "glb",
+    "runtimeFormat": "vrm",
+    "maxRuntimeBytes": 15728640,
+    "runtime": "@pixiv/three-vrm@3.5.5"
+  },
+  "expressions": ["blink", "aa"],
+  "states": ["idle", "listening", "thinking", "speaking", "greeting", "presenting", "success", "error"],
+  "validation": {
+    "activationPolicy": "validated-model-only",
+    "fallbackRequired": true
+  }
+}
