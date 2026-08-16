@@ -53,7 +53,7 @@ if (-not (Test-Path -LiteralPath $canonicalImagePath -PathType Leaf)) {
 }
 
 try {
-    $systemStats = Invoke-RestMethod -Method Get -Uri "$baseUrl/system_stats" -TimeoutSec 10
+    $null = Invoke-RestMethod -Method Get -Uri "$baseUrl/system_stats" -TimeoutSec 10
 } catch {
     throw "ComfyUI is not reachable at $baseUrl. Start ComfyUI and retry. Details: $($_.Exception.Message)"
 }
@@ -89,7 +89,7 @@ $prompt = Get-Content -LiteralPath $apiWorkflowPath -Raw -Encoding UTF8 | Conver
 if ($Preset -eq 'production') {
     $prompt.'4'.inputs.resolution = 2048
     $prompt.'10'.inputs.filename_prefix = 'Elyna/elyna_shape_production_2048'
-    Write-Host 'WARNING: production 2048 uses substantially more VRAM. The official Hunyuan3D 2.1 guidance is above a 6 GiB GPU for shape generation; only continue if the 1024 diagnostic already succeeded.' -ForegroundColor Yellow
+    Write-Host 'WARNING: production 2048 uses substantially more VRAM. The official Hunyuan3D 2.1 guidance is about 10 GiB of VRAM for shape generation alone. Only try this after the 1024 diagnostic succeeds; on lower-VRAM hardware the run may fail even with memory offload.' -ForegroundColor Yellow
 } else {
     $prompt.'4'.inputs.resolution = 1024
     $prompt.'10'.inputs.filename_prefix = 'Elyna/elyna_shape_low_vram_1024'
