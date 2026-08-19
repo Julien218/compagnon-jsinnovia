@@ -7,7 +7,11 @@ ROOT = Path(__file__).resolve().parents[1]
 required = [
     ROOT / 'config/avatar-factory.json',
     ROOT / 'config/finops-policy.schema.json',
+    ROOT / 'workflows/comfyui/avatar_hunyuan3d_shape_api.json',
     ROOT / 'scripts/avatar_factory_server.py',
+    ROOT / 'scripts/run_avatar_comfyui.ps1',
+    ROOT / 'scripts/blender_finalize_avatar.py',
+    ROOT / 'scripts/sync_finops.py',
     ROOT / 'scripts/start_avatar_factory.ps1',
     ROOT / 'characters/vaincriez-canary/manifest.json',
 ]
@@ -17,10 +21,17 @@ if missing:
 
 cfg = json.loads((ROOT / 'config/avatar-factory.json').read_text(encoding='utf-8'))
 manifest = json.loads((ROOT / 'characters/vaincriez-canary/manifest.json').read_text(encoding='utf-8'))
+workflow = json.loads((ROOT / 'workflows/comfyui/avatar_hunyuan3d_shape_api.json').read_text(encoding='utf-8'))
+assert cfg['version'] >= 2
 assert cfg['server']['port'] == 8791
 assert cfg['routing']['default'] == 'local'
-assert 'human_approval' in cfg['approval_gates']
+assert cfg['pipeline'] == ['reference_qa','shape_3d','blender_finalize','runtime_qa','human_approval']
+assert cfg['approval_gates'] == ['human_approval']
+assert cfg['runtime']['validation_format'] == 'GLB'
 assert manifest['runtime']['target_format'] == 'VRM'
 assert manifest['production']['human_approval_before_publish'] is True
-py_compile.compile(str(ROOT / 'scripts/avatar_factory_server.py'), doraise=True)
+assert workflow['2']['class_type'] == 'LoadImage'
+assert workflow['10']['class_type'] == 'SaveGLB'
+for script in ['avatar_factory_server.py', 'blender_finalize_avatar.py', 'sync_finops.py']:
+    py_compile.compile(str(ROOT / 'scripts' / script), doraise=True)
 print('Avatar Factory validation: OK')
