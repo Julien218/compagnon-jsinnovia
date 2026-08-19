@@ -19,7 +19,7 @@ def load_events():
     conn = sqlite3.connect(DB)
     conn.row_factory = sqlite3.Row
     rows = conn.execute('''
-      SELECT c.id cost_id,c.category,c.provider,c.model,c.quantity,c.unit,c.cost_eur,c.billable_eur,c.metadata_json,c.created_at,
+      SELECT c.id cost_id,c.category,c.provider,c.model,c.quantity,c.unit,c.cost_eur,c.metadata_json,c.created_at,
              j.id job_id,j.client_id,j.entity_id,j.project_id,j.character_id,j.billing_policy
       FROM costs c JOIN jobs j ON j.id=c.job_id
       ORDER BY c.id ASC
@@ -42,12 +42,12 @@ def load_events():
             'quantity': r['quantity'],
             'unit': r['unit'],
             'cost_eur': r['cost_eur'],
-            'billable_eur': r['billable_eur'],
             'source': 'avatar-factory-local',
             'metadata': {
                 **json.loads(r['metadata_json'] or '{}'),
                 'character_id': r['character_id'],
                 'local_billing_policy': r['billing_policy'],
+                'billing_authority': 'cockpit-finops'
             },
         })
     return events
