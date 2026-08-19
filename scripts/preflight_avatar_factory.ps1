@@ -44,11 +44,20 @@ try {
 $manifestPath = Join-Path $Root "characters\$CharacterId\manifest.json"
 if (Test-Path -LiteralPath $manifestPath -PathType Leaf) { Pass "Manifest personnage: $CharacterId" } else { Fail "Manifest personnage manquant: $manifestPath" }
 
-if (-not $ReferencePath) { $ReferencePath = Join-Path $Root "characters\$CharacterId\reference.png" }
-if (Test-Path -LiteralPath $ReferencePath -PathType Leaf) {
-  $size = (Get-Item -LiteralPath $ReferencePath).Length
-  if ($size -ge 10000) { Pass "Référence: $ReferencePath ($([math]::Round($size/1KB,1)) KB)" } else { Fail 'Image de référence trop petite ou invalide' }
-} else { Fail "Image de référence manquante: $ReferencePath" }
+if ($ReferencePath) {
+  if (Test-Path -LiteralPath $ReferencePath -PathType Leaf) {
+    $size = (Get-Item -LiteralPath $ReferencePath).Length
+    if ($size -ge 10000) { Pass "Référence fournie: $ReferencePath ($([math]::Round($size/1KB,1)) KB)" } else { Fail 'Image de référence trop petite ou invalide' }
+  } else { Fail "Image de référence fournie mais introuvable: $ReferencePath" }
+} else {
+  $canonicalReference = Join-Path $Root "characters\$CharacterId\reference.png"
+  if (Test-Path -LiteralPath $canonicalReference -PathType Leaf) {
+    $size = (Get-Item -LiteralPath $canonicalReference).Length
+    if ($size -ge 10000) { Pass "Référence canonique disponible: $canonicalReference ($([math]::Round($size/1KB,1)) KB)" } else { Warn 'Référence canonique présente mais trop petite; utilise l’upload du Cockpit avant de lancer un job.' }
+  } else {
+    Warn 'Aucune référence locale préchargée. C’est normal si l’image sera déposée depuis Cockpit > Avatar Factory après démarrage des services 8791/8792.'
+  }
+}
 
 $drive = Get-PSDrive -Name C -ErrorAction SilentlyContinue
 if ($drive) {
@@ -67,5 +76,5 @@ if ($Failures.Count -gt 0) {
   $Failures | ForEach-Object { Write-Host " - $_" -ForegroundColor Red }
   exit 1
 }
-Write-Host 'PRECHECK PASSED — station prête pour un run diagnostic réel.' -ForegroundColor Green
+Write-Host 'PRECHECK PASSED — station prête. La référence peut maintenant être envoyée depuis le Cockpit avant le lancement du job.' -ForegroundColor Green
 exit 0
