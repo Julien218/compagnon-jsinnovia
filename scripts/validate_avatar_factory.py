@@ -9,6 +9,7 @@ required = [
     ROOT / 'config/finops-policy.schema.json',
     ROOT / 'workflows/comfyui/avatar_hunyuan3d_shape_api.json',
     ROOT / 'scripts/avatar_factory_server.py',
+    ROOT / 'scripts/avatar_reference_upload_server.py',
     ROOT / 'scripts/run_avatar_comfyui.ps1',
     ROOT / 'scripts/blender_finalize_avatar.py',
     ROOT / 'scripts/sync_finops.py',
@@ -34,6 +35,6 @@ assert manifest['runtime']['target_format'] == 'VRM'
 assert manifest['production']['human_approval_before_publish'] is True
 assert workflow['2']['class_type'] == 'LoadImage'
 assert workflow['10']['class_type'] == 'SaveGLB'
-for script in ['avatar_factory_server.py', 'blender_finalize_avatar.py', 'sync_finops.py']:
+for script in ['avatar_factory_server.py', 'avatar_reference_upload_server.py', 'blender_finalize_avatar.py', 'sync_finops.py']:
     py_compile.compile(str(ROOT / 'scripts' / script), doraise=True)
 print('Avatar Factory validation: OK')
