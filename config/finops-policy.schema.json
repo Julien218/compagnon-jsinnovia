@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JS-Innov.IA FinOps Billing Policy",
+  "type": "object",
+  "required": ["policy", "allocation"],
+  "properties": {
+    "policy": {
+      "type": "string",
+      "enum": ["standard_margin", "fixed_plus_overage", "technical_costs_only", "custom"]
+    },
+    "allocation": {
+      "type": "object",
+      "required": ["client_id", "entity_id", "project_id"],
+      "properties": {
+        "client_id": {"type": "string"},
+        "entity_id": {"type": "string"},
+        "project_id": {"type": "string"}
+      }
+    },
+    "cost_categories": {
+      "type": "array",
+      "items": {
+        "enum": ["llm_cloud", "llm_local", "gpu_local", "cpu_local", "electricity", "machine_amortization", "storage", "railway", "github", "voice", "image", "video", "3d", "email_sms", "human_time", "other"]
+      }
+    },
+    "margin": {
+      "type": "object",
+      "properties": {
+        "minimum_percent": {"type": "number", "minimum": 0},
+        "markup_percent": {"type": "number", "minimum": 0},
+        "minimum_invoice_amount": {"type": "number", "minimum": 0}
+      }
+    },
+    "local_compute": {
+      "type": "object",
+      "properties": {
+        "gpu_hour_rate": {"type": "number", "minimum": 0},
+        "cpu_hour_rate": {"type": "number", "minimum": 0},
+        "electricity_kwh_rate": {"type": "number", "minimum": 0},
+        "machine_amortization_hour_rate": {"type": "number", "minimum": 0},
+        "local_llm_token_accounting": {"type": "boolean", "default": true}
+      }
+    }
+  }
+}
