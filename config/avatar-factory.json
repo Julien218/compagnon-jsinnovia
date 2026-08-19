@@ -1,0 +1,45 @@
+{
+  "version": 2,
+  "server": {"host": "127.0.0.1", "port": 8791},
+  "paths": {
+    "workspace": "runtime/avatar-factory",
+    "comfyui": "C:/Users/PC User/AI/ComfyUI_windows_portable/ComfyUI_windows_portable/ComfyUI",
+    "blender": "blender"
+  },
+  "pipeline": [
+    "reference_qa",
+    "shape_3d",
+    "blender_finalize",
+    "runtime_qa",
+    "human_approval"
+  ],
+  "approval_gates": ["human_approval"],
+  "routing": {
+    "default": "local",
+    "allow_cloud": false,
+    "allow_hybrid": true,
+    "min_free_ram_gb": 8,
+    "min_free_disk_gb": 25,
+    "default_preset": "diagnostic"
+  },
+  "runtime": {
+    "validation_format": "GLB",
+    "target_format": "VRM",
+    "max_validation_asset_mib": 25,
+    "max_web_asset_mib": 15,
+    "require_visual_approval_before_publish": true
+  },
+  "finops": {
+    "currency": "EUR",
+    "gpu_hour_rate": 0.65,
+    "cpu_hour_rate": 0.18,
+    "machine_amortization_hour_rate": 0.35,
+    "electricity_kwh_rate": 0.35,
+    "estimated_gpu_kw": 0.12,
+    "estimated_cpu_kw": 0.06,
+    "local_llm_per_million_input_tokens": 0.20,
+    "local_llm_per_million_output_tokens": 0.40,
+    "default_markup_percent": 50,
+    "minimum_margin_percent": 30
+  }
+}
