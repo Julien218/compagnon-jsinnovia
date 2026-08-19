@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "server": {"host": "127.0.0.1", "port": 8791},
+  "paths": {
+    "workspace": "runtime/avatar-factory",
+    "comfyui": "C:/Users/PC User/AI/ComfyUI_windows_portable/ComfyUI_windows_portable/ComfyUI",
+    "blender": "blender"
+  },
+  "pipeline": [
+    "director",
+    "turnaround_qa",
+    "shape_3d",
+    "mesh_qa",
+    "blender_cleanup",
+    "rig",
+    "animations",
+    "export",
+    "runtime_qa",
+    "human_approval"
+  ],
+  "approval_gates": ["turnaround_qa", "human_approval"],
+  "routing": {
+    "default": "local",
+    "allow_cloud": false,
+    "allow_hybrid": true,
+    "min_free_ram_gb": 8,
+    "min_free_disk_gb": 25
+  },
+  "commands": {
+    "shape_3d": ["powershell", "-ExecutionPolicy", "Bypass", "-File", "scripts/run_elyna_comfyui.ps1", "-Preset", "diagnostic"],
+    "blender_cleanup": ["blender", "--background", "--python", "scripts/blender_avatar_factory.py", "--"],
+    "runtime_qa": ["python", "scripts/validate_avatar_factory.py"]
+  },
+  "finops": {
+    "currency": "EUR",
+    "gpu_hour_rate": 0.65,
+    "cpu_hour_rate": 0.18,
+    "machine_amortization_hour_rate": 0.35,
+    "electricity_kwh_rate": 0.35,
+    "estimated_gpu_kw": 0.12,
+    "estimated_cpu_kw": 0.06,
+    "local_llm_per_million_input_tokens": 0.20,
+    "local_llm_per_million_output_tokens": 0.40,
+    "default_markup_percent": 50,
+    "minimum_margin_percent": 30
+  }
+}
