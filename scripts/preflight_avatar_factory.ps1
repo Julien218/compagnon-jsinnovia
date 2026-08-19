@@ -15,21 +15,21 @@ function Warn([string]$Message) { Write-Host "[WARN] $Message" -ForegroundColor 
 
 Write-Host '=== Avatar Factory Production Preflight ===' -ForegroundColor Cyan
 
-try { $py = python --version 2>&1; Pass "Python: $py" } catch { Fail 'Python introuvable dans PATH' }
-try { $nv = nvidia-smi --query-gpu=name,memory.total,memory.free --format=csv,noheader 2>$null; if ($LASTEXITCODE -eq 0) { Pass "GPU NVIDIA: $nv" } else { Warn 'nvidia-smi indisponible' } } catch { Warn 'nvidia-smi indisponible' }
+try { $py = python --version 2>&1; Pass "Python: $py" } catch { Fail 'Python not found in PATH' }
+try { $nv = nvidia-smi --query-gpu=name,memory.total,memory.free --format=csv,noheader 2>$null; if ($LASTEXITCODE -eq 0) { Pass "NVIDIA GPU: $nv" } else { Warn 'nvidia-smi unavailable' } } catch { Warn 'nvidia-smi unavailable' }
 
 $blender = if ($env:BLENDER_EXE) { $env:BLENDER_EXE } else { 'blender' }
 try {
   if ($env:BLENDER_EXE -and (Test-Path -LiteralPath $env:BLENDER_EXE -PathType Leaf)) { Pass "Blender: $env:BLENDER_EXE" }
   else { $b = Get-Command $blender -ErrorAction Stop; Pass "Blender: $($b.Source)" }
-} catch { Fail 'Blender introuvable. Ajoute blender.exe au PATH ou définis BLENDER_EXE.' }
+} catch { Fail 'Blender not found. Add blender.exe to PATH or define BLENDER_EXE.' }
 
 $checkpoint = Join-Path $ComfyUIRoot 'models\checkpoints\hunyuan_3d_v2.1.safetensors'
 if (Test-Path -LiteralPath $checkpoint -PathType Leaf) {
   $expected = '5f21e98a6cb99b13b5e224abaee33929570fff7af2b6a0060001559a04ba9d72'
   $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $checkpoint).Hash.ToLowerInvariant()
-  if ($actual -eq $expected) { Pass 'Checkpoint Hunyuan3D 2.1 + SHA256' } else { Fail 'Checkpoint Hunyuan3D présent mais SHA256 incorrect' }
-} else { Fail "Checkpoint Hunyuan3D manquant: $checkpoint" }
+  if ($actual -eq $expected) { Pass 'Hunyuan3D 2.1 checkpoint + SHA256' } else { Fail 'Hunyuan3D checkpoint found but SHA256 is incorrect' }
+} else { Fail "Hunyuan3D checkpoint missing: $checkpoint" }
 
 try {
   $stats = Invoke-RestMethod -Method Get -Uri "http://$ServerAddress/system_stats" -TimeoutSec 5
@@ -38,43 +38,45 @@ try {
   $required = @('ImageOnlyCheckpointLoader','LoadImage','ModelSamplingAuraFlow','CLIPVisionEncode','Hunyuan3Dv2Conditioning','EmptyLatentHunyuan3Dv2','KSampler','VAEDecodeHunyuan3D','VoxelToMesh','SaveGLB')
   $available = @($info.PSObject.Properties.Name)
   $missing = @($required | Where-Object { $_ -notin $available })
-  if ($missing.Count -eq 0) { Pass 'Nœuds ComfyUI Hunyuan3D complets' } else { Fail "Nœuds ComfyUI manquants: $($missing -join ', ')" }
-} catch { Fail "ComfyUI indisponible ou incomplet sur http://$ServerAddress : $($_.Exception.Message)" }
+  if ($missing.Count -eq 0) { Pass 'Required ComfyUI Hunyuan3D nodes available' } else { Fail "Missing ComfyUI nodes: $($missing -join ', ')" }
+} catch { Fail "ComfyUI unavailable or incomplete on http://${ServerAddress}: $($_.Exception.Message)" }
 
 $manifestPath = Join-Path $Root "characters\$CharacterId\manifest.json"
-if (Test-Path -LiteralPath $manifestPath -PathType Leaf) { Pass "Manifest personnage: $CharacterId" } else { Fail "Manifest personnage manquant: $manifestPath" }
+if (Test-Path -LiteralPath $manifestPath -PathType Leaf) { Pass "Character manifest: $CharacterId" } else { Fail "Character manifest missing: $manifestPath" }
 
 if ($ReferencePath) {
   if (Test-Path -LiteralPath $ReferencePath -PathType Leaf) {
     $size = (Get-Item -LiteralPath $ReferencePath).Length
-    if ($size -ge 10000) { Pass "Référence fournie: $ReferencePath ($([math]::Round($size/1KB,1)) KB)" } else { Fail 'Image de référence trop petite ou invalide' }
-  } else { Fail "Image de référence fournie mais introuvable: $ReferencePath" }
+    $sizeKb = [math]::Round(($size / 1KB), 1)
+    if ($size -ge 10000) { Pass "Reference supplied: $ReferencePath - $sizeKb KB" } else { Fail 'Reference image is too small or invalid' }
+  } else { Fail "Reference image supplied but not found: $ReferencePath" }
 } else {
   $canonicalReference = Join-Path $Root "characters\$CharacterId\reference.png"
   if (Test-Path -LiteralPath $canonicalReference -PathType Leaf) {
     $size = (Get-Item -LiteralPath $canonicalReference).Length
-    if ($size -ge 10000) { Pass "Référence canonique disponible: $canonicalReference ($([math]::Round($size/1KB,1)) KB)" } else { Warn 'Référence canonique présente mais trop petite; utilise l’upload du Cockpit avant de lancer un job.' }
+    $sizeKb = [math]::Round(($size / 1KB), 1)
+    if ($size -ge 10000) { Pass "Canonical reference available: $canonicalReference - $sizeKb KB" } else { Warn 'Canonical reference is too small; use Cockpit upload before starting a job.' }
   } else {
-    Warn 'Aucune référence locale préchargée. C’est normal si l’image sera déposée depuis Cockpit > Avatar Factory après démarrage des services 8791/8792.'
+    Warn 'No local reference preloaded. This is normal when the image will be uploaded from Cockpit > Avatar Factory after services 8791/8792 start.'
   }
 }
 
 $drive = Get-PSDrive -Name C -ErrorAction SilentlyContinue
 if ($drive) {
-  $freeGb = [math]::Round($drive.Free / 1GB, 1)
-  if ($freeGb -ge 25) { Pass "Espace disque libre C: $freeGb Go" } else { Fail "Espace disque insuffisant: $freeGb Go (minimum 25 Go)" }
+  $freeGb = [math]::Round(($drive.Free / 1GB), 1)
+  if ($freeGb -ge 25) { Pass "Free disk space C: $freeGb GB" } else { Fail "Insufficient disk space: $freeGb GB - minimum 25 GB" }
 }
 
 try {
   python "$PSScriptRoot\validate_avatar_factory.py"
-  if ($LASTEXITCODE -eq 0) { Pass 'Contrat repository Avatar Factory' } else { Fail 'Validation repository en échec' }
-} catch { Fail "Validation repository impossible: $($_.Exception.Message)" }
+  if ($LASTEXITCODE -eq 0) { Pass 'Avatar Factory repository contract' } else { Fail 'Repository validation failed' }
+} catch { Fail "Repository validation unavailable: $($_.Exception.Message)" }
 
 Write-Host ''
 if ($Failures.Count -gt 0) {
-  Write-Host "PRECHECK FAILED — $($Failures.Count) blocage(s)" -ForegroundColor Red
+  Write-Host "PRECHECK FAILED - $($Failures.Count) blocker(s)" -ForegroundColor Red
   $Failures | ForEach-Object { Write-Host " - $_" -ForegroundColor Red }
   exit 1
 }
-Write-Host 'PRECHECK PASSED — station prête. La référence peut maintenant être envoyée depuis le Cockpit avant le lancement du job.' -ForegroundColor Green
+Write-Host 'PRECHECK PASSED - station ready. The reference can now be uploaded from the Cockpit before starting a job.' -ForegroundColor Green
 exit 0
