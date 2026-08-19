@@ -7,6 +7,7 @@ on:
       - 'characters/**'
       - 'scripts/avatar_factory_server.py'
       - 'scripts/avatar_reference_upload_server.py'
+      - 'scripts/avatar_preview_server.py'
       - 'scripts/run_avatar_comfyui.ps1'
       - 'scripts/blender_finalize_avatar.py'
       - 'scripts/sync_finops.py'
