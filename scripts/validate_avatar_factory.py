@@ -13,6 +13,8 @@ required = [
     ROOT / 'scripts/blender_finalize_avatar.py',
     ROOT / 'scripts/sync_finops.py',
     ROOT / 'scripts/start_avatar_factory.ps1',
+    ROOT / 'scripts/preflight_avatar_factory.ps1',
+    ROOT / 'QUICKSTART_AVATAR_FACTORY.md',
     ROOT / 'characters/vaincriez-canary/manifest.json',
 ]
 missing = [str(p.relative_to(ROOT)) for p in required if not p.exists()]
