@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "server": {"host": "127.0.0.1", "port": 8791},
   "paths": {
     "workspace": "runtime/avatar-factory",
@@ -7,29 +7,27 @@
     "blender": "blender"
   },
   "pipeline": [
-    "director",
-    "turnaround_qa",
+    "reference_qa",
     "shape_3d",
-    "mesh_qa",
-    "blender_cleanup",
-    "rig",
-    "animations",
-    "export",
+    "blender_finalize",
     "runtime_qa",
     "human_approval"
   ],
-  "approval_gates": ["turnaround_qa", "human_approval"],
+  "approval_gates": ["human_approval"],
   "routing": {
     "default": "local",
     "allow_cloud": false,
     "allow_hybrid": true,
     "min_free_ram_gb": 8,
-    "min_free_disk_gb": 25
+    "min_free_disk_gb": 25,
+    "default_preset": "diagnostic"
   },
-  "commands": {
-    "shape_3d": ["powershell", "-ExecutionPolicy", "Bypass", "-File", "scripts/run_elyna_comfyui.ps1", "-Preset", "diagnostic"],
-    "blender_cleanup": ["blender", "--background", "--python", "scripts/blender_avatar_factory.py", "--"],
-    "runtime_qa": ["python", "scripts/validate_avatar_factory.py"]
+  "runtime": {
+    "validation_format": "GLB",
+    "target_format": "VRM",
+    "max_validation_asset_mib": 25,
+    "max_web_asset_mib": 15,
+    "require_visual_approval_before_publish": true
   },
   "finops": {
     "currency": "EUR",
