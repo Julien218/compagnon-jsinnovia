@@ -17,6 +17,9 @@ try {
 Write-Host 'Starting secure reference image upload API on http://127.0.0.1:8792' -ForegroundColor Green
 Start-Process -WindowStyle Hidden -FilePath 'python' -ArgumentList @("$PSScriptRoot/avatar_reference_upload_server.py")
 
+Write-Host 'Starting secure 3D preview API on http://127.0.0.1:8793' -ForegroundColor Green
+Start-Process -WindowStyle Hidden -FilePath 'python' -ArgumentList @("$PSScriptRoot/avatar_preview_server.py")
+
 if ($env:COCKPIT_URL -and $env:FINOPS_INGEST_KEY) {
   Write-Host 'Starting automatic FinOps synchronization...' -ForegroundColor Green
   Start-Process -WindowStyle Hidden -FilePath 'python' -ArgumentList @("$PSScriptRoot/sync_finops.py", '--watch')
@@ -26,4 +29,5 @@ if ($env:COCKPIT_URL -and $env:FINOPS_INGEST_KEY) {
 
 Write-Host 'Starting Avatar Factory API on http://127.0.0.1:8791'
 Write-Host 'Reference upload API available on http://127.0.0.1:8792'
+Write-Host '3D preview API available on http://127.0.0.1:8793'
 python "$PSScriptRoot/avatar_factory_server.py"
