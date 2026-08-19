@@ -14,6 +14,9 @@ try {
   Write-Warning 'ComfyUI not reachable on 127.0.0.1:8188. Avatar Factory will start, but 3D jobs will fail until ComfyUI is online.'
 }
 
+Write-Host 'Starting secure reference image upload API on http://127.0.0.1:8792' -ForegroundColor Green
+Start-Process -WindowStyle Hidden -FilePath 'python' -ArgumentList @("$PSScriptRoot/avatar_reference_upload_server.py")
+
 if ($env:COCKPIT_URL -and $env:FINOPS_INGEST_KEY) {
   Write-Host 'Starting automatic FinOps synchronization...' -ForegroundColor Green
   Start-Process -WindowStyle Hidden -FilePath 'python' -ArgumentList @("$PSScriptRoot/sync_finops.py", '--watch')
@@ -22,4 +25,5 @@ if ($env:COCKPIT_URL -and $env:FINOPS_INGEST_KEY) {
 }
 
 Write-Host 'Starting Avatar Factory API on http://127.0.0.1:8791'
+Write-Host 'Reference upload API available on http://127.0.0.1:8792'
 python "$PSScriptRoot/avatar_factory_server.py"
