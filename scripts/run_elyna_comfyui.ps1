@@ -3,6 +3,7 @@ param(
     [string]$Preset = 'diagnostic',
     [string]$ServerAddress = '127.0.0.1:8188',
     [string]$ComfyUIRoot = $(if ($env:COMFYUI_ROOT) { $env:COMFYUI_ROOT } else { Join-Path $env:USERPROFILE 'AI\ComfyUI_windows_portable\ComfyUI_windows_portable\ComfyUI' }),
+    [string]$ComfyUISharedRoot = $env:COMFYUI_SHARED_ROOT,
     [int]$TimeoutMinutes = 90
 )
 
@@ -13,11 +14,15 @@ $apiWorkflowPath = Join-Path $repoRoot 'workflows\comfyui\elyna_hunyuan3d_shape_
 $checkpointName = 'hunyuan_3d_v2.1.safetensors'
 $expectedSha256 = '5f21e98a6cb99b13b5e224abaee33929570fff7af2b6a0060001559a04ba9d72'
 $checkpointPath = Join-Path $ComfyUIRoot "models\checkpoints\$checkpointName"
-$inputDir = Join-Path $ComfyUIRoot 'input'
+if (-not $ComfyUISharedRoot) {
+    $desktopShared = Join-Path $env:LOCALAPPDATA 'Comfy-Desktop\ComfyUI-Shared'
+    if (Test-Path -LiteralPath $desktopShared -PathType Container) { $ComfyUISharedRoot = $desktopShared }
+}
+$inputDir = if ($ComfyUISharedRoot) { Join-Path $ComfyUISharedRoot 'input' } else { Join-Path $ComfyUIRoot 'input' }
 $canonicalImageName = '00_phenix_companion_officiel_reference.png'
 $canonicalImagePath = Join-Path $inputDir $canonicalImageName
 $fallbackImagePath = Join-Path $inputDir 'elyna-reference.png'
-$outputDir = Join-Path $ComfyUIRoot 'output'
+$outputDir = if ($ComfyUISharedRoot) { Join-Path $ComfyUISharedRoot 'output' } else { Join-Path $ComfyUIRoot 'output' }
 $baseUrl = "http://$ServerAddress"
 
 function Assert-File([string]$Path, [string]$Message) {

@@ -26,8 +26,12 @@ Write-Host '=== Avatar Factory Production Preflight ===' -ForegroundColor Cyan
 try { $py = python --version 2>&1; Pass "Python: $py" } catch { Fail 'Python not found in PATH' }
 try { $nv = nvidia-smi --query-gpu=name,memory.total,memory.free --format=csv,noheader 2>$null; if ($LASTEXITCODE -eq 0) { Pass "NVIDIA GPU: $nv" } else { Warn 'nvidia-smi unavailable' } } catch { Warn 'nvidia-smi unavailable' }
 
+$programFiles64 = if ($env:ProgramW6432) { $env:ProgramW6432 } else { $env:ProgramFiles }
 $blenderCandidates = @(
   $env:BLENDER_EXE,
+  (Join-Path $programFiles64 'Blender Foundation\Blender 5.2\blender.exe'),
+  (Join-Path $programFiles64 'Blender Foundation\Blender 5.1\blender.exe'),
+  (Join-Path $programFiles64 'Blender Foundation\Blender 5.0\blender.exe'),
   (Join-Path $env:ProgramFiles 'Blender Foundation\Blender 5.2\blender.exe'),
   (Join-Path $env:ProgramFiles 'Blender Foundation\Blender 5.1\blender.exe'),
   (Join-Path $env:ProgramFiles 'Blender Foundation\Blender 5.0\blender.exe')
@@ -44,6 +48,11 @@ if (Test-Path -LiteralPath $checkpoint -PathType Leaf) {
   $actual = Get-Sha256 $checkpoint
   if ($actual -eq $expected) { Pass 'Hunyuan3D 2.1 checkpoint + SHA256' } else { Fail 'Hunyuan3D checkpoint found but SHA256 is incorrect' }
 } else { Fail "Hunyuan3D checkpoint missing: $checkpoint" }
+
+$desktopShared = if ($env:COMFYUI_SHARED_ROOT) { $env:COMFYUI_SHARED_ROOT } else { Join-Path $env:LOCALAPPDATA 'Comfy-Desktop\ComfyUI-Shared' }
+if ((Test-Path -LiteralPath (Join-Path $desktopShared 'input') -PathType Container) -and (Test-Path -LiteralPath (Join-Path $desktopShared 'output') -PathType Container)) {
+  Pass "ComfyUI Desktop shared input/output: $desktopShared"
+}
 
 try {
   $stats = Invoke-RestMethod -Method Get -Uri "http://$ServerAddress/system_stats" -TimeoutSec 5

@@ -7,7 +7,7 @@
 - Espace disque suffisant pour le checkpoint et les sorties GLB
 - Référence canonique : `00_phenix_companion_officiel_reference.png`
 
-Le démarrage détecte automatiquement l'installation ComfyUI Desktop et Blender 5.x. Pour une installation personnalisée, définir `COMFYUI_ROOT` et `BLENDER_EXE` avant de lancer `scripts/start_avatar_factory.ps1`.
+Le démarrage détecte automatiquement l'installation ComfyUI Desktop, ses dossiers partagés `input/output` et Blender 5.x. Pour une installation personnalisée, définir `COMFYUI_ROOT`, `COMFYUI_SHARED_ROOT` et `BLENDER_EXE` avant de lancer `scripts/start_avatar_factory.ps1`.
 
 ## Checkpoint Hunyuan3D 2.1
 
