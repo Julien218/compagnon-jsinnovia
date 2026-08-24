@@ -9,8 +9,19 @@ if (-not $env:COMFYUI_ROOT) {
   }
 }
 
+if (-not $env:COMFYUI_SHARED_ROOT) {
+  $desktopShared = Join-Path $env:LOCALAPPDATA 'Comfy-Desktop\ComfyUI-Shared'
+  if (Test-Path -LiteralPath $desktopShared -PathType Container) {
+    $env:COMFYUI_SHARED_ROOT = $desktopShared
+  }
+}
+
 if (-not $env:BLENDER_EXE) {
+  $programFiles64 = if ($env:ProgramW6432) { $env:ProgramW6432 } else { $env:ProgramFiles }
   $blenderCandidates = @(
+    (Join-Path $programFiles64 'Blender Foundation\Blender 5.2\blender.exe'),
+    (Join-Path $programFiles64 'Blender Foundation\Blender 5.1\blender.exe'),
+    (Join-Path $programFiles64 'Blender Foundation\Blender 5.0\blender.exe'),
     (Join-Path $env:ProgramFiles 'Blender Foundation\Blender 5.2\blender.exe'),
     (Join-Path $env:ProgramFiles 'Blender Foundation\Blender 5.1\blender.exe'),
     (Join-Path $env:ProgramFiles 'Blender Foundation\Blender 5.0\blender.exe')
