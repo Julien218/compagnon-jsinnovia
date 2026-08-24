@@ -108,6 +108,7 @@ if ($Preset -eq 'production') {
     $prompt.'4'.inputs.resolution = 1024
     $prompt.'10'.inputs.filename_prefix = 'Elyna/elyna_shape_low_vram_1024'
 }
+$prompt.'9'.inputs.threshold = 0.6
 
 $clientId = [guid]::NewGuid().ToString()
 $payload = @{

@@ -76,8 +76,17 @@ while ((Get-Date) -lt $deadline) {
 if (-not $historyItem) { throw "Timed out waiting for $promptId" }
 if ($historyItem.status -and $historyItem.status.status_str -and $historyItem.status.status_str -ne 'success') { throw "ComfyUI status: $($historyItem.status.status_str)" }
 
-$candidates = @(Get-ChildItem -LiteralPath $outputDir -Filter '*.glb' -File -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -ge $startTime.AddMinutes(-1) } | Sort-Object LastWriteTime -Descending)
-if ($candidates.Count -lt 1) { throw 'No new GLB found after successful ComfyUI job' }
+$reported = @($historyItem.outputs.'10'.'3d')
+$candidates = @()
+foreach ($item in $reported) {
+  if (-not $item.filename) { continue }
+  $candidate = if ($item.subfolder) { Join-Path (Join-Path $outputDir $item.subfolder) $item.filename } else { Join-Path $outputDir $item.filename }
+  if (Test-Path -LiteralPath $candidate -PathType Leaf) { $candidates += Get-Item -LiteralPath $candidate }
+}
+if ($candidates.Count -lt 1) {
+  $candidates = @(Get-ChildItem -LiteralPath $outputDir -Filter '*.glb' -File -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -ge $startTime.AddMinutes(-1) } | Sort-Object LastWriteTime -Descending)
+}
+if ($candidates.Count -lt 1) { throw 'SaveGLB completed without a GLB file. The generated voxel mesh may be empty.' }
 $destination = [System.IO.Path]::GetFullPath($OutputPath)
 $destinationDir = Split-Path -Parent $destination
 New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null
