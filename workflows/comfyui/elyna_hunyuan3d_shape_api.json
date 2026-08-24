@@ -62,7 +62,7 @@
     "inputs": {
       "voxel": ["8", 0],
       "algorithm": "surface net",
-      "threshold": 0.7
+      "threshold": 0.6
     }
   },
   "10": {

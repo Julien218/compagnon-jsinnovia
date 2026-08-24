@@ -24,6 +24,54 @@ meshes = [o for o in bpy.context.scene.objects if o.type == 'MESH']
 if not meshes:
     raise SystemExit('No mesh in GLB')
 
+
+def mesh_connectivity(objects):
+    """Return topology facts used to reject visibly fragmented generations."""
+    component_sizes = []
+    total_vertices = 0
+    for obj in objects:
+        vertex_count = len(obj.data.vertices)
+        total_vertices += vertex_count
+        if vertex_count == 0:
+            continue
+        parent = list(range(vertex_count))
+        sizes = [1] * vertex_count
+
+        def find(index):
+            while parent[index] != index:
+                parent[index] = parent[parent[index]]
+                index = parent[index]
+            return index
+
+        def union(left, right):
+            left_root = find(left)
+            right_root = find(right)
+            if left_root == right_root:
+                return
+            if sizes[left_root] < sizes[right_root]:
+                left_root, right_root = right_root, left_root
+            parent[right_root] = left_root
+            sizes[left_root] += sizes[right_root]
+
+        for polygon in obj.data.polygons:
+            vertices = list(polygon.vertices)
+            for index in vertices[1:]:
+                union(vertices[0], index)
+
+        roots = {}
+        for index in range(vertex_count):
+            root = find(index)
+            roots[root] = roots.get(root, 0) + 1
+        component_sizes.extend(roots.values())
+
+    largest = max(component_sizes, default=0)
+    return {
+        'connected_components': len(component_sizes),
+        'largest_component_vertices': largest,
+        'largest_component_ratio': round(largest / max(1, total_vertices), 4),
+        'vertices': total_vertices,
+    }
+
 # Normalize transforms and remove obviously excessive geometry.
 for obj in meshes:
     bpy.context.view_layer.objects.active = obj
@@ -112,12 +160,14 @@ for frame, body_z, head_y, wing in [(1,0,0,0),(24,0.015,0.035,0.06),(48,0,0,0),(
 # Neutral camera-independent output for Three.js / R3F validation.
 dst.parent.mkdir(parents=True, exist_ok=True)
 bpy.ops.export_scene.gltf(filepath=str(dst), export_format='GLB', export_apply=True, export_animations=True)
+connectivity = mesh_connectivity(meshes)
 report = {
     'status': 'candidate_ready',
     'input': str(src),
     'output': str(dst),
     'meshes': len(meshes),
     'polygons': sum(len(o.data.polygons) for o in meshes),
+    **connectivity,
     'armature': arm.name,
     'bones': [b.name for b in arm.data.bones],
     'animations': ['idle'],

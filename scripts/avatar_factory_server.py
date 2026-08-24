@@ -13,6 +13,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
+from avatar_runtime_qa import evaluate_runtime_qa
+
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = json.loads((ROOT / "config" / "avatar-factory.json").read_text(encoding="utf-8"))
 WORKSPACE = ROOT / CONFIG["paths"]["workspace"]
@@ -244,15 +246,9 @@ def execute_stage(job, stage):
         qa = json.loads(qa_path.read_text(encoding="utf-8"))
         size_mib = candidate.stat().st_size / (1024 * 1024)
         max_mib = float(CONFIG["runtime"].get("max_validation_asset_mib", 25))
-        errors = []
-        if size_mib <= 0.01:
-            errors.append("candidate_too_small")
-        if size_mib > max_mib:
-            errors.append("candidate_too_large")
-        if not qa.get("armature") or not qa.get("bones"):
-            errors.append("rig_missing")
-        if "idle" not in qa.get("animations", []):
-            errors.append("idle_animation_missing")
+        max_components = int(CONFIG["runtime"].get("max_connected_components", 12))
+        min_largest_ratio = float(CONFIG["runtime"].get("min_largest_component_ratio", 0.80))
+        errors = evaluate_runtime_qa(size_mib, max_mib, qa, max_components, min_largest_ratio)
         report = {"ok": not errors, "size_mib": round(size_mib, 3), "max_mib": max_mib, "errors": errors, "blender": qa}
         paths["runtime_qa"].write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
         set_output(job["id"], runtime_qa=str(paths["runtime_qa"]), validation_ready=not errors)

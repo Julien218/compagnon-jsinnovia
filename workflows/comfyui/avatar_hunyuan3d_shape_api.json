@@ -6,7 +6,7 @@
   "6": {"class_type":"Hunyuan3Dv2Conditioning","inputs":{"clip_vision_output":["13",0]}},
   "7": {"class_type":"KSampler","inputs":{"model":["3",0],"positive":["6",0],"negative":["6",1],"latent_image":["4",0],"seed":2182026,"steps":12,"cfg":5.0,"sampler_name":"euler","scheduler":"normal","denoise":1.0}},
   "8": {"class_type":"VAEDecodeHunyuan3D","inputs":{"samples":["7",0],"vae":["1",2],"num_chunks":1000,"octree_resolution":128}},
-  "9": {"class_type":"VoxelToMesh","inputs":{"voxel":["8",0],"algorithm":"surface net","threshold":0.7}},
+  "9": {"class_type":"VoxelToMesh","inputs":{"voxel":["8",0],"algorithm":"surface net","threshold":0.6}},
   "10": {"class_type":"SaveGLB","inputs":{"mesh":["9",0],"filename_prefix":"AvatarFactory/avatar_shape_low_vram_1024"},"_meta":{"title":"Save Avatar GLB"}},
   "13": {"class_type":"CLIPVisionEncode","inputs":{"clip_vision":["1",1],"image":["2",0],"crop":"none"}}
 }

@@ -70,7 +70,7 @@ Valeurs de départ :
 - Sampler : euler
 - Scheduler : normal
 - Octree : 128
-- Threshold : 0.7
+- Threshold : 0.6 (valeur par défaut du nœud ComfyUI installé)
 
 Objectif : vérifier silhouette, tête, proportions, ailes et queue. Ce GLB n'est pas encore un produit final.
 
