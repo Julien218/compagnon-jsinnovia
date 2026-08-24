@@ -12,6 +12,14 @@ $Failures = New-Object System.Collections.Generic.List[string]
 function Pass([string]$Message) { Write-Host "[OK] $Message" -ForegroundColor Green }
 function Fail([string]$Message) { Write-Host "[KO] $Message" -ForegroundColor Red; $Failures.Add($Message) }
 function Warn([string]$Message) { Write-Host "[WARN] $Message" -ForegroundColor Yellow }
+function Get-Sha256([string]$Path) {
+  $stream = [System.IO.File]::OpenRead($Path)
+  try {
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try { return ([System.BitConverter]::ToString($sha.ComputeHash($stream))).Replace('-', '').ToLowerInvariant() }
+    finally { $sha.Dispose() }
+  } finally { $stream.Dispose() }
+}
 
 Write-Host '=== Avatar Factory Production Preflight ===' -ForegroundColor Cyan
 
@@ -33,7 +41,7 @@ try {
 $checkpoint = Join-Path $ComfyUIRoot 'models\checkpoints\hunyuan_3d_v2.1.safetensors'
 if (Test-Path -LiteralPath $checkpoint -PathType Leaf) {
   $expected = '5f21e98a6cb99b13b5e224abaee33929570fff7af2b6a0060001559a04ba9d72'
-  $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $checkpoint).Hash.ToLowerInvariant()
+  $actual = Get-Sha256 $checkpoint
   if ($actual -eq $expected) { Pass 'Hunyuan3D 2.1 checkpoint + SHA256' } else { Fail 'Hunyuan3D checkpoint found but SHA256 is incorrect' }
 } else { Fail "Hunyuan3D checkpoint missing: $checkpoint" }
 
