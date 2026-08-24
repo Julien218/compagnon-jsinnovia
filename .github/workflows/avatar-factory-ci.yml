@@ -1,0 +1,31 @@
+name: Avatar Factory CI
+
+on:
+  pull_request:
+    paths:
+      - 'config/**'
+      - 'characters/**'
+      - 'scripts/avatar_factory_server.py'
+      - 'scripts/avatar_reference_upload_server.py'
+      - 'scripts/avatar_preview_server.py'
+      - 'scripts/run_avatar_comfyui.ps1'
+      - 'scripts/blender_finalize_avatar.py'
+      - 'scripts/sync_finops.py'
+      - 'scripts/preflight_avatar_factory.ps1'
+      - 'scripts/validate_avatar_factory.py'
+      - 'scripts/start_avatar_factory.ps1'
+      - 'QUICKSTART_AVATAR_FACTORY.md'
+      - '.github/workflows/avatar-factory-ci.yml'
+  push:
+    branches: ['feature/avatar-factory-finops']
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate repository contract
+        run: python scripts/validate_avatar_factory.py

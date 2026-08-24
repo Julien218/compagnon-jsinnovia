@@ -1,0 +1,30 @@
+{
+  "id": "vaincriez-canary",
+  "name": "Canari Les Vaincriez Dour",
+  "brand": "Les Vaincriez Dour",
+  "location": "Dour, Belgique",
+  "created_by": "JS-Innov.IA",
+  "reference": {
+    "status": "pending_binary_upload",
+    "canonical_path": "characters/vaincriez-canary/reference.png"
+  },
+  "identity": {
+    "species": "canary",
+    "presentation": "neutral",
+    "tone": ["modern", "connected", "friendly", "subtly futuristic"],
+    "brand_signature": "JS-Innov.IA subtle only",
+    "local_signature": "Dour recognizable without dominating the character"
+  },
+  "runtime": {
+    "target_format": "VRM",
+    "fallback_format": "GLB",
+    "max_web_asset_mib": 15,
+    "required_states": ["idle", "blink", "greeting", "listening", "thinking", "speaking", "presenting", "success", "error"]
+  },
+  "production": {
+    "turnaround_required": true,
+    "human_approval_after_turnaround": true,
+    "human_approval_before_publish": true,
+    "default_compute": "local"
+  }
+}
