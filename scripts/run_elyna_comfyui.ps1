@@ -26,6 +26,15 @@ function Assert-File([string]$Path, [string]$Message) {
     }
 }
 
+function Get-Sha256([string]$Path) {
+    $stream = [System.IO.File]::OpenRead($Path)
+    try {
+        $sha = [System.Security.Cryptography.SHA256]::Create()
+        try { return ([System.BitConverter]::ToString($sha.ComputeHash($stream))).Replace('-', '').ToLowerInvariant() }
+        finally { $sha.Dispose() }
+    } finally { $stream.Dispose() }
+}
+
 Write-Host 'Elyna — Hunyuan3D local runner' -ForegroundColor Cyan
 Write-Host "Preset: $Preset"
 Write-Host "ComfyUI: $baseUrl"
@@ -37,7 +46,7 @@ if (-not (Test-Path -LiteralPath $ComfyUIRoot -PathType Container)) {
 Assert-File $apiWorkflowPath "API workflow missing: $apiWorkflowPath"
 Assert-File $checkpointPath "Checkpoint missing: $checkpointPath. Run scripts\setup_hunyuan3d_checkpoint.ps1 first."
 
-$checkpointHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $checkpointPath).Hash.ToLowerInvariant()
+$checkpointHash = Get-Sha256 $checkpointPath
 if ($checkpointHash -ne $expectedSha256) {
     throw "Checkpoint SHA256 is invalid. Expected $expectedSha256, got $checkpointHash."
 }

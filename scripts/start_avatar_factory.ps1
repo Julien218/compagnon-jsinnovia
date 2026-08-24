@@ -31,14 +31,17 @@ try {
 }
 
 Write-Host 'Starting secure reference image upload API on http://127.0.0.1:8792' -ForegroundColor Green
-Start-Process -WindowStyle Hidden -FilePath 'python' -ArgumentList @("$PSScriptRoot/avatar_reference_upload_server.py")
+$uploadScript = Join-Path $PSScriptRoot 'avatar_reference_upload_server.py'
+Start-Process -WindowStyle Hidden -FilePath 'python' -ArgumentList @('-u', "`"$uploadScript`"")
 
 Write-Host 'Starting secure 3D preview API on http://127.0.0.1:8793' -ForegroundColor Green
-Start-Process -WindowStyle Hidden -FilePath 'python' -ArgumentList @("$PSScriptRoot/avatar_preview_server.py")
+$previewScript = Join-Path $PSScriptRoot 'avatar_preview_server.py'
+Start-Process -WindowStyle Hidden -FilePath 'python' -ArgumentList @('-u', "`"$previewScript`"")
 
 if ($env:COCKPIT_URL -and $env:FINOPS_INGEST_KEY) {
   Write-Host 'Starting automatic FinOps synchronization...' -ForegroundColor Green
-  Start-Process -WindowStyle Hidden -FilePath 'python' -ArgumentList @("$PSScriptRoot/sync_finops.py", '--watch')
+  $finopsScript = Join-Path $PSScriptRoot 'sync_finops.py'
+  Start-Process -WindowStyle Hidden -FilePath 'python' -ArgumentList @('-u', "`"$finopsScript`"", '--watch')
 } else {
   Write-Warning 'FinOps cloud sync disabled until COCKPIT_URL and FINOPS_INGEST_KEY are configured.'
 }

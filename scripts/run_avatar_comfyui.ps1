@@ -19,11 +19,19 @@ $outputDir = Join-Path $ComfyUIRoot 'output'
 $baseUrl = "http://$ServerAddress"
 
 function Assert-File([string]$Path,[string]$Message) { if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { throw $Message } }
+function Get-Sha256([string]$Path) {
+    $stream = [System.IO.File]::OpenRead($Path)
+    try {
+        $sha = [System.Security.Cryptography.SHA256]::Create()
+        try { return ([System.BitConverter]::ToString($sha.ComputeHash($stream))).Replace('-', '').ToLowerInvariant() }
+        finally { $sha.Dispose() }
+    } finally { $stream.Dispose() }
+}
 
 Assert-File $ReferencePath "Avatar reference missing: $ReferencePath"
 Assert-File $workflowPath "Generic API workflow missing: $workflowPath"
 Assert-File $checkpointPath "Checkpoint missing: $checkpointPath"
-$hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $checkpointPath).Hash.ToLowerInvariant()
+$hash = Get-Sha256 $checkpointPath
 if ($hash -ne $expectedSha256) { throw "Checkpoint SHA256 mismatch." }
 
 try { $null = Invoke-RestMethod -Method Get -Uri "$baseUrl/system_stats" -TimeoutSec 10 } catch { throw "ComfyUI unavailable at $baseUrl" }

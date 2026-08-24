@@ -11,6 +11,15 @@ $expectedSha256 = '5f21e98a6cb99b13b5e224abaee33929570fff7af2b6a0060001559a04ba9
 $checkpointDir = Join-Path $ComfyUIRoot 'models\checkpoints'
 $checkpointPath = Join-Path $checkpointDir $checkpointName
 
+function Get-Sha256([string]$Path) {
+    $stream = [System.IO.File]::OpenRead($Path)
+    try {
+        $sha = [System.Security.Cryptography.SHA256]::Create()
+        try { return ([System.BitConverter]::ToString($sha.ComputeHash($stream))).Replace('-', '').ToLowerInvariant() }
+        finally { $sha.Dispose() }
+    } finally { $stream.Dispose() }
+}
+
 Write-Host "Elyna / Hunyuan3D 2.1 checkpoint setup" -ForegroundColor Cyan
 Write-Host "ComfyUI root: $ComfyUIRoot"
 
@@ -33,7 +42,7 @@ if ($driveName) {
 }
 
 if (Test-Path $checkpointPath) {
-    $existingHash = (Get-FileHash -Algorithm SHA256 -Path $checkpointPath).Hash.ToLowerInvariant()
+    $existingHash = Get-Sha256 $checkpointPath
     if ($existingHash -eq $expectedSha256) {
         Write-Host 'Checkpoint already present and SHA256 is valid.' -ForegroundColor Green
         exit 0
@@ -56,7 +65,7 @@ if ($bits) {
 }
 
 Write-Host 'Verifying SHA256...' -ForegroundColor Yellow
-$downloadedHash = (Get-FileHash -Algorithm SHA256 -Path $checkpointPath).Hash.ToLowerInvariant()
+$downloadedHash = Get-Sha256 $checkpointPath
 if ($downloadedHash -ne $expectedSha256) {
     Remove-Item -Force $checkpointPath
     throw "SHA256 verification failed. Download removed. Expected $expectedSha256, got $downloadedHash."
