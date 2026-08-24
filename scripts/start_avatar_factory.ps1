@@ -2,6 +2,22 @@ $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 
+if (-not $env:COMFYUI_ROOT) {
+  $desktopComfyUI = Join-Path $env:LOCALAPPDATA 'Comfy-Desktop\ComfyUI-Installs\Comfyui\ComfyUI'
+  if (Test-Path -LiteralPath $desktopComfyUI -PathType Container) {
+    $env:COMFYUI_ROOT = $desktopComfyUI
+  }
+}
+
+if (-not $env:BLENDER_EXE) {
+  $blenderCandidates = @(
+    (Join-Path $env:ProgramFiles 'Blender Foundation\Blender 5.2\blender.exe'),
+    (Join-Path $env:ProgramFiles 'Blender Foundation\Blender 5.1\blender.exe'),
+    (Join-Path $env:ProgramFiles 'Blender Foundation\Blender 5.0\blender.exe')
+  )
+  $env:BLENDER_EXE = $blenderCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+}
+
 Write-Host '=== JS-Innov.IA Avatar Factory ===' -ForegroundColor Cyan
 Write-Host 'Checking Python...'
 python --version
