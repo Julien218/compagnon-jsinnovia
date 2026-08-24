@@ -1,7 +1,7 @@
 param(
   [string]$CharacterId = 'vaincriez-canary',
   [string]$ReferencePath = '',
-  [string]$ComfyUIRoot = (Join-Path $env:USERPROFILE 'AI\ComfyUI_windows_portable\ComfyUI_windows_portable\ComfyUI'),
+  [string]$ComfyUIRoot = $(if ($env:COMFYUI_ROOT) { $env:COMFYUI_ROOT } else { Join-Path $env:USERPROFILE 'AI\ComfyUI_windows_portable\ComfyUI_windows_portable\ComfyUI' }),
   [string]$ServerAddress = '127.0.0.1:8188'
 )
 
@@ -18,9 +18,15 @@ Write-Host '=== Avatar Factory Production Preflight ===' -ForegroundColor Cyan
 try { $py = python --version 2>&1; Pass "Python: $py" } catch { Fail 'Python not found in PATH' }
 try { $nv = nvidia-smi --query-gpu=name,memory.total,memory.free --format=csv,noheader 2>$null; if ($LASTEXITCODE -eq 0) { Pass "NVIDIA GPU: $nv" } else { Warn 'nvidia-smi unavailable' } } catch { Warn 'nvidia-smi unavailable' }
 
-$blender = if ($env:BLENDER_EXE) { $env:BLENDER_EXE } else { 'blender' }
+$blenderCandidates = @(
+  $env:BLENDER_EXE,
+  (Join-Path $env:ProgramFiles 'Blender Foundation\Blender 5.2\blender.exe'),
+  (Join-Path $env:ProgramFiles 'Blender Foundation\Blender 5.1\blender.exe'),
+  (Join-Path $env:ProgramFiles 'Blender Foundation\Blender 5.0\blender.exe')
+) | Where-Object { $_ -and (Test-Path -LiteralPath $_ -PathType Leaf) }
+$blender = if ($blenderCandidates.Count -gt 0) { $blenderCandidates[0] } else { 'blender' }
 try {
-  if ($env:BLENDER_EXE -and (Test-Path -LiteralPath $env:BLENDER_EXE -PathType Leaf)) { Pass "Blender: $env:BLENDER_EXE" }
+  if (Test-Path -LiteralPath $blender -PathType Leaf) { Pass "Blender: $blender" }
   else { $b = Get-Command $blender -ErrorAction Stop; Pass "Blender: $($b.Source)" }
 } catch { Fail 'Blender not found. Add blender.exe to PATH or define BLENDER_EXE.' }
 

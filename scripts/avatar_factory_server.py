@@ -218,6 +218,9 @@ def execute_stage(job, stage):
             "powershell", "-ExecutionPolicy", "Bypass", "-File", str(ROOT / "scripts" / "run_avatar_comfyui.ps1"),
             "-CharacterId", job["character_id"], "-ReferencePath", str(ref), "-OutputPath", str(paths["raw"]), "-Preset", preset,
         ]
+        comfyui_root = os.getenv("COMFYUI_ROOT") or CONFIG["paths"].get("comfyui")
+        if comfyui_root:
+            command.extend(["-ComfyUIRoot", comfyui_root])
         run_command(job, stage, command, gpu=True)
         if not paths["raw"].exists():
             raise RuntimeError("ComfyUI completed but raw GLB was not materialized")

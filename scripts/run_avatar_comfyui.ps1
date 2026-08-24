@@ -4,7 +4,7 @@ param(
     [Parameter(Mandatory=$true)][string]$OutputPath,
     [ValidateSet('diagnostic','production')][string]$Preset = 'diagnostic',
     [string]$ServerAddress = '127.0.0.1:8188',
-    [string]$ComfyUIRoot = (Join-Path $env:USERPROFILE 'AI\ComfyUI_windows_portable\ComfyUI_windows_portable\ComfyUI'),
+    [string]$ComfyUIRoot = $(if ($env:COMFYUI_ROOT) { $env:COMFYUI_ROOT } else { Join-Path $env:USERPROFILE 'AI\ComfyUI_windows_portable\ComfyUI_windows_portable\ComfyUI' }),
     [int]$TimeoutMinutes = 90
 )
 
