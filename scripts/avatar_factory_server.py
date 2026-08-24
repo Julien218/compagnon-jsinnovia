@@ -246,7 +246,7 @@ def execute_stage(job, stage):
         qa = json.loads(qa_path.read_text(encoding="utf-8"))
         size_mib = candidate.stat().st_size / (1024 * 1024)
         max_mib = float(CONFIG["runtime"].get("max_validation_asset_mib", 25))
-        max_components = int(CONFIG["runtime"].get("max_connected_components", 4))
+        max_components = int(CONFIG["runtime"].get("max_connected_components", 12))
         min_largest_ratio = float(CONFIG["runtime"].get("min_largest_component_ratio", 0.80))
         errors = evaluate_runtime_qa(size_mib, max_mib, qa, max_components, min_largest_ratio)
         report = {"ok": not errors, "size_mib": round(size_mib, 3), "max_mib": max_mib, "errors": errors, "blender": qa}

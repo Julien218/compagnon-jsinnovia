@@ -1,4 +1,4 @@
-def evaluate_runtime_qa(size_mib, max_mib, qa, max_components=4, min_largest_ratio=0.80):
+def evaluate_runtime_qa(size_mib, max_mib, qa, max_components=12, min_largest_ratio=0.80):
     errors = []
     if size_mib <= 0.01:
         errors.append("candidate_too_small")

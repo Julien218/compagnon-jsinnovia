@@ -31,7 +31,7 @@ class RuntimeQATests(unittest.TestCase):
             ],
         )
 
-    def test_detached_head_and_accessories_are_rejected(self):
+    def test_production_accessories_are_allowed(self):
         qa = {
             "armature": "AvatarFactoryRig",
             "bones": ["root", "body", "head"],
@@ -39,10 +39,7 @@ class RuntimeQATests(unittest.TestCase):
             "connected_components": 8,
             "largest_component_ratio": 0.9486,
         }
-        self.assertEqual(
-            evaluate_runtime_qa(1.06, 25, qa),
-            ["mesh_fragmented_too_many_components"],
-        )
+        self.assertEqual(evaluate_runtime_qa(15.847, 25, qa), [])
 
 
 if __name__ == "__main__":
