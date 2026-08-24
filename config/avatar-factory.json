@@ -27,7 +27,7 @@
     "target_format": "VRM",
     "max_validation_asset_mib": 25,
     "max_web_asset_mib": 15,
-    "max_connected_components": 4,
+    "max_connected_components": 12,
     "min_largest_component_ratio": 0.80,
     "require_visual_approval_before_publish": true
   },
