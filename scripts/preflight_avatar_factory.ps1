@@ -42,12 +42,17 @@ try {
   else { $b = Get-Command $blender -ErrorAction Stop; Pass "Blender: $($b.Source)" }
 } catch { Fail 'Blender not found. Add blender.exe to PATH or define BLENDER_EXE.' }
 
-$checkpoint = Join-Path $ComfyUIRoot 'models\checkpoints\hunyuan_3d_v2.1.safetensors'
-if (Test-Path -LiteralPath $checkpoint -PathType Leaf) {
-  $expected = '5f21e98a6cb99b13b5e224abaee33929570fff7af2b6a0060001559a04ba9d72'
-  $actual = Get-Sha256 $checkpoint
-  if ($actual -eq $expected) { Pass 'Hunyuan3D 2.1 checkpoint + SHA256' } else { Fail 'Hunyuan3D checkpoint found but SHA256 is incorrect' }
-} else { Fail "Hunyuan3D checkpoint missing: $checkpoint" }
+$checkpoints = @(
+  @{ Name='Hunyuan3D 2.1 mono'; File='hunyuan_3d_v2.1.safetensors'; Sha='5f21e98a6cb99b13b5e224abaee33929570fff7af2b6a0060001559a04ba9d72' },
+  @{ Name='Hunyuan3D 2 multiview'; File='hunyuan3d-dit-v2-mv_fp16.safetensors'; Sha='d36f5881bcdc56726b73e517cd444c13c60732431622da7268145355c8d38e9c' }
+)
+foreach ($model in $checkpoints) {
+  $checkpoint = Join-Path $ComfyUIRoot "models\checkpoints\$($model.File)"
+  if (Test-Path -LiteralPath $checkpoint -PathType Leaf) {
+    $actual = Get-Sha256 $checkpoint
+    if ($actual -eq $model.Sha) { Pass "$($model.Name) checkpoint + SHA256" } else { Fail "$($model.Name) checkpoint found but SHA256 is incorrect" }
+  } else { Fail "$($model.Name) checkpoint missing: $checkpoint" }
+}
 
 $desktopShared = if ($env:COMFYUI_SHARED_ROOT) { $env:COMFYUI_SHARED_ROOT } else { Join-Path $env:LOCALAPPDATA 'Comfy-Desktop\ComfyUI-Shared' }
 if ((Test-Path -LiteralPath (Join-Path $desktopShared 'input') -PathType Container) -and (Test-Path -LiteralPath (Join-Path $desktopShared 'output') -PathType Container)) {
@@ -58,7 +63,7 @@ try {
   $stats = Invoke-RestMethod -Method Get -Uri "http://$ServerAddress/system_stats" -TimeoutSec 5
   Pass "ComfyUI API: http://$ServerAddress"
   $info = Invoke-RestMethod -Method Get -Uri "http://$ServerAddress/object_info" -TimeoutSec 30
-  $required = @('ImageOnlyCheckpointLoader','LoadImage','ModelSamplingAuraFlow','CLIPVisionEncode','Hunyuan3Dv2Conditioning','EmptyLatentHunyuan3Dv2','KSampler','VAEDecodeHunyuan3D','VoxelToMesh','SaveGLB')
+  $required = @('ImageOnlyCheckpointLoader','LoadImage','ModelSamplingAuraFlow','CLIPVisionEncode','Hunyuan3Dv2Conditioning','Hunyuan3Dv2ConditioningMultiView','FluxGuidance','EmptyLatentHunyuan3Dv2','KSampler','VAEDecodeHunyuan3D','VoxelToMesh','SaveGLB')
   $available = @($info.PSObject.Properties.Name)
   $missing = @($required | Where-Object { $_ -notin $available })
   if ($missing.Count -eq 0) { Pass 'Required ComfyUI Hunyuan3D nodes available' } else { Fail "Missing ComfyUI nodes: $($missing -join ', ')" }

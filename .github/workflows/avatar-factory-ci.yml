@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'config/**'
+      - 'workflows/comfyui/**'
       - 'characters/**'
       - 'scripts/avatar_factory_server.py'
       - 'scripts/avatar_runtime_qa.py'

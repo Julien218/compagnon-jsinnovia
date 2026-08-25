@@ -8,9 +8,16 @@ ComfyUI doit répondre sur :
 
 `http://127.0.0.1:8188`
 
-Le checkpoint attendu est :
+Les checkpoints attendus sont :
 
 `ComfyUI/models/checkpoints/hunyuan_3d_v2.1.safetensors`
+
+`ComfyUI/models/checkpoints/hunyuan3d-dit-v2-mv_fp16.safetensors`
+
+Le premier sert au parcours à une image. Le second est obligatoire dès qu'une
+vue droite est fournie avec `right_reference_path`. Le moteur multivue utilise
+une graine stable par défaut (`2182026`) afin qu'un même couple d'images soit
+reproductible.
 
 ## 2. Vérifier Blender
 `blender.exe` doit être disponible dans le `PATH`, ou définir :
@@ -60,7 +67,7 @@ Le service 8792 n'accepte que PNG/JPEG/WebP, contrôle la signature réelle du f
 ## 6. Lancer depuis le Cockpit
 Ouvre **Avatar Factory**. Les deux indicateurs **Agent 8791** et **Upload 8792** doivent être connectés.
 
-Renseigne le client, la société/ASBL, le projet et le personnage, puis **dépose directement l'image de référence dans la zone d'upload du Cockpit**. Aucun chemin Windows ni copie manuelle vers ComfyUI n'est nécessaire.
+Renseigne le client, la société/ASBL, le projet et le personnage, puis **dépose directement l'image de référence dans la zone d'upload du Cockpit**. Aucun chemin Windows ni copie manuelle vers ComfyUI n'est nécessaire. Pour une géométrie plus stable, envoie une vue avant dans `reference_path` et une vue droite cohérente dans `right_reference_path`.
 
 Pour le pilote avec une RTX A3000 6 Go, conserve le preset `diagnostic 1024` pour le premier run.
 
@@ -68,7 +75,11 @@ Quand l'aperçu indique que la référence est prête, clique **Lancer la produc
 
 Le pipeline exécute :
 
-`upload Cockpit → reference QA → Hunyuan3D/ComfyUI → GLB brut → Blender rig/idle → runtime QA → validation humaine`
+`upload Cockpit → reference QA → Hunyuan3D mono ou multivue/ComfyUI → GLB brut → nettoyage prudent des fragments → Blender rig/idle → runtime QA → validation humaine`
+
+Le nettoyage ne supprime des îlots détachés que si une pièce principale
+représente au moins 80 % du maillage. Le rapport QA conserve le nombre de
+composants et de sommets retirés. Aucun candidat n'est publié automatiquement.
 
 ## 7. Validation
 Le candidat final apparaît dans :

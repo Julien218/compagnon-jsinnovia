@@ -200,15 +200,24 @@ def execute_stage(job, stage):
 
     if stage == "reference_qa":
         ref = reference_path(job)
-        if not ref.exists() or not ref.is_file():
-            raise RuntimeError(f"Reference image missing: {ref}. Copy the approved image there or pass reference_path.")
-        if ref.stat().st_size < 10_000:
-            raise RuntimeError("Reference image appears invalid or too small")
-        suffix = ref.suffix.lower()
-        if suffix not in {".png", ".jpg", ".jpeg", ".webp"}:
-            raise RuntimeError(f"Unsupported reference format: {suffix}")
-        set_output(job["id"], reference_path=str(ref))
-        emit(job["id"], stage, "Référence validée", payload={"path": str(ref), "bytes": ref.stat().st_size})
+        references = [("front", ref)]
+        if payload.get("right_reference_path"):
+            references.append(("right", Path(os.path.expandvars(os.path.expanduser(str(payload["right_reference_path"]))))))
+        validated = {}
+        for view, path in references:
+            if not path.exists() or not path.is_file():
+                raise RuntimeError(f"{view} reference image missing: {path}")
+            if path.stat().st_size < 10_000:
+                raise RuntimeError(f"{view} reference image appears invalid or too small")
+            suffix = path.suffix.lower()
+            if suffix not in {".png", ".jpg", ".jpeg", ".webp"}:
+                raise RuntimeError(f"Unsupported {view} reference format: {suffix}")
+            validated[view] = {"path": str(path), "bytes": path.stat().st_size}
+        output = {"reference_path": str(ref)}
+        if "right" in validated:
+            output["right_reference_path"] = validated["right"]["path"]
+        set_output(job["id"], **output)
+        emit(job["id"], stage, "Références validées", payload=validated)
         return "ok"
 
     if stage == "shape_3d":
@@ -220,13 +229,19 @@ def execute_stage(job, stage):
             "powershell", "-ExecutionPolicy", "Bypass", "-File", str(ROOT / "scripts" / "run_avatar_comfyui.ps1"),
             "-CharacterId", job["character_id"], "-ReferencePath", str(ref), "-OutputPath", str(paths["raw"]), "-Preset", preset,
         ]
+        if payload.get("right_reference_path"):
+            command.extend(["-RightReferencePath", str(Path(os.path.expandvars(os.path.expanduser(str(payload["right_reference_path"])))) )])
+        seed = int(payload.get("seed") or 2182026)
+        if seed < 1 or seed > 2147483646:
+            raise RuntimeError("seed must be between 1 and 2147483646")
+        command.extend(["-Seed", str(seed)])
         comfyui_root = os.getenv("COMFYUI_ROOT") or CONFIG["paths"].get("comfyui")
         if comfyui_root:
             command.extend(["-ComfyUIRoot", comfyui_root])
         run_command(job, stage, command, gpu=True)
         if not paths["raw"].exists():
             raise RuntimeError("ComfyUI completed but raw GLB was not materialized")
-        set_output(job["id"], raw_glb=str(paths["raw"]), preset=preset)
+        set_output(job["id"], raw_glb=str(paths["raw"]), preset=preset, seed=seed, multiview=bool(payload.get("right_reference_path")))
         return "ok"
 
     if stage == "blender_finalize":
