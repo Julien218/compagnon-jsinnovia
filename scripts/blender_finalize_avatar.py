@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 try:
+    import bmesh
     import bpy
     from mathutils import Vector
 except ImportError as exc:
@@ -72,7 +73,49 @@ def mesh_connectivity(objects):
         'vertices': total_vertices,
     }
 
-# Normalize transforms and remove obviously excessive geometry.
+
+def remove_detached_fragments(objects, min_dominant_ratio=0.80):
+    """Remove loose scan artefacts only when one connected piece clearly dominates."""
+    removed_components = 0
+    removed_vertices = 0
+    for obj in objects:
+        mesh = obj.data
+        bm = bmesh.new()
+        bm.from_mesh(mesh)
+        bm.verts.ensure_lookup_table()
+        unvisited = set(bm.verts)
+        components = []
+        while unvisited:
+            seed = unvisited.pop()
+            component = {seed}
+            pending = [seed]
+            while pending:
+                vertex = pending.pop()
+                for edge in vertex.link_edges:
+                    other = edge.other_vert(vertex)
+                    if other in unvisited:
+                        unvisited.remove(other)
+                        component.add(other)
+                        pending.append(other)
+            components.append(component)
+        if len(components) <= 1:
+            bm.free()
+            continue
+        dominant = max(components, key=len)
+        total = sum(len(component) for component in components)
+        if len(dominant) / max(1, total) < min_dominant_ratio:
+            bm.free()
+            continue
+        detached = [vertex for component in components if component is not dominant for vertex in component]
+        removed_components += len(components) - 1
+        removed_vertices += len(detached)
+        bmesh.ops.delete(bm, geom=detached, context='VERTS')
+        bm.to_mesh(mesh)
+        mesh.update()
+        bm.free()
+    return {'removed_components': removed_components, 'removed_vertices': removed_vertices}
+
+# Normalize transforms, remove detached scan artefacts and cap excessive geometry.
 for obj in meshes:
     bpy.context.view_layer.objects.active = obj
     obj.select_set(True)
@@ -82,6 +125,8 @@ for obj in meshes:
         mod.ratio = max(0.12, 180000 / max(1, len(obj.data.polygons)))
         bpy.ops.object.modifier_apply(modifier=mod.name)
     obj.select_set(False)
+
+fragment_cleanup = remove_detached_fragments(meshes)
 
 # World-space bounding box drives a generic mascot rig.
 points = []
@@ -168,6 +213,7 @@ report = {
     'meshes': len(meshes),
     'polygons': sum(len(o.data.polygons) for o in meshes),
     **connectivity,
+    'fragment_cleanup': fragment_cleanup,
     'armature': arm.name,
     'bones': [b.name for b in arm.data.bones],
     'animations': ['idle'],

@@ -27,6 +27,18 @@ def main():
     if not meshes:
         raise RuntimeError("No mesh found in GLB")
 
+    # A neutral clay override reveals topology in shape-only GLBs without
+    # altering the candidate file or hiding defects behind bright white.
+    clay = bpy.data.materials.new("QA Clay")
+    clay.use_nodes = True
+    principled = clay.node_tree.nodes.get("Principled BSDF")
+    principled.inputs["Base Color"].default_value = (0.18, 0.22, 0.30, 1.0)
+    principled.inputs["Metallic"].default_value = 0.0
+    principled.inputs["Roughness"].default_value = 0.72
+    for obj in meshes:
+        obj.data.materials.clear()
+        obj.data.materials.append(clay)
+
     points = [obj.matrix_world @ Vector(corner) for obj in meshes for corner in obj.bound_box]
     low = Vector((min(p.x for p in points), min(p.y for p in points), min(p.z for p in points)))
     high = Vector((max(p.x for p in points), max(p.y for p in points), max(p.z for p in points)))
