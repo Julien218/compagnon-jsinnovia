@@ -4,12 +4,16 @@
   "3": {"class_type":"ModelSamplingAuraFlow","inputs":{"model":["1",0],"shift":1.0}},
   "4": {"class_type":"EmptyLatentHunyuan3Dv2","inputs":{"resolution":1024,"batch_size":1}},
   "5": {"class_type":"LoadImage","inputs":{"image":"avatar-right.png"},"_meta":{"title":"Avatar right reference"}},
-  "6": {"class_type":"Hunyuan3Dv2ConditioningMultiView","inputs":{"front":["13",0],"right":["14",0]}},
+  "6": {"class_type":"Hunyuan3Dv2ConditioningMultiView","inputs":{"front":["13",0],"left":["18",0],"back":["19",0],"right":["14",0]}},
   "7": {"class_type":"KSampler","inputs":{"model":["3",0],"positive":["15",0],"negative":["6",1],"latent_image":["4",0],"seed":2182026,"steps":20,"cfg":1.0,"sampler_name":"euler","scheduler":"normal","denoise":1.0}},
   "8": {"class_type":"VAEDecodeHunyuan3D","inputs":{"samples":["7",0],"vae":["1",2],"num_chunks":1000,"octree_resolution":128}},
   "9": {"class_type":"VoxelToMesh","inputs":{"voxel":["8",0],"algorithm":"surface net","threshold":0.6}},
   "10": {"class_type":"SaveGLB","inputs":{"mesh":["9",0],"filename_prefix":"AvatarFactory/avatar_multiview_shape"},"_meta":{"title":"Save Avatar GLB"}},
   "13": {"class_type":"CLIPVisionEncode","inputs":{"clip_vision":["1",1],"image":["2",0],"crop":"none"}},
   "14": {"class_type":"CLIPVisionEncode","inputs":{"clip_vision":["1",1],"image":["5",0],"crop":"none"}},
-  "15": {"class_type":"FluxGuidance","inputs":{"conditioning":["6",0],"guidance":3.5},"_meta":{"title":"Multiview guidance"}}
+  "15": {"class_type":"FluxGuidance","inputs":{"conditioning":["6",0],"guidance":3.5},"_meta":{"title":"Multiview guidance"}},
+  "16": {"class_type":"LoadImage","inputs":{"image":"avatar-left.png"},"_meta":{"title":"Avatar left reference"}},
+  "17": {"class_type":"LoadImage","inputs":{"image":"avatar-back.png"},"_meta":{"title":"Avatar back reference"}},
+  "18": {"class_type":"CLIPVisionEncode","inputs":{"clip_vision":["1",1],"image":["16",0],"crop":"none"}},
+  "19": {"class_type":"CLIPVisionEncode","inputs":{"clip_vision":["1",1],"image":["17",0],"crop":"none"}}
 }

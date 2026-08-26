@@ -67,6 +67,11 @@ try {
   $available = @($info.PSObject.Properties.Name)
   $missing = @($required | Where-Object { $_ -notin $available })
   if ($missing.Count -eq 0) { Pass 'Required ComfyUI Hunyuan3D nodes available' } else { Fail "Missing ComfyUI nodes: $($missing -join ', ')" }
+  if ('Hunyuan3Dv2ConditioningMultiView' -in $available) {
+    $multiViewInputs = @($info.Hunyuan3Dv2ConditioningMultiView.input.optional.PSObject.Properties.Name)
+    $missingViews = @('front','left','back','right') | Where-Object { $_ -notin $multiViewInputs }
+    if ($missingViews.Count -eq 0) { Pass 'Hunyuan3D four-view inputs available (front, left, back, right)' } else { Fail "Missing Hunyuan3D view inputs: $($missingViews -join ', ')" }
+  }
 } catch { Fail "ComfyUI unavailable or incomplete on http://${ServerAddress}: $($_.Exception.Message)" }
 
 $manifestPath = Join-Path $Root "characters\$CharacterId\manifest.json"

@@ -14,10 +14,11 @@ Les checkpoints attendus sont :
 
 `ComfyUI/models/checkpoints/hunyuan3d-dit-v2-mv_fp16.safetensors`
 
-Le premier sert au parcours à une image. Le second est obligatoire dès qu'une
-vue droite est fournie avec `right_reference_path`. Le moteur multivue utilise
-une graine stable par défaut (`2182026`) afin qu'un même couple d'images soit
-reproductible.
+Le premier sert au parcours de compatibilité à une image. Le second est
+obligatoire pour le parcours recommandé à quatre vues : `reference_path`
+(face), `left_reference_path`, `back_reference_path` et
+`right_reference_path`. Le moteur multivue utilise une graine stable par
+défaut (`2182026`) afin qu'un même jeu de quatre images soit reproductible.
 
 ## 2. Vérifier Blender
 `blender.exe` doit être disponible dans le `PATH`, ou définir :
@@ -67,7 +68,11 @@ Le service 8792 n'accepte que PNG/JPEG/WebP, contrôle la signature réelle du f
 ## 6. Lancer depuis le Cockpit
 Ouvre **Avatar Factory**. Les deux indicateurs **Agent 8791** et **Upload 8792** doivent être connectés.
 
-Renseigne le client, la société/ASBL, le projet et le personnage, puis **dépose directement l'image de référence dans la zone d'upload du Cockpit**. Aucun chemin Windows ni copie manuelle vers ComfyUI n'est nécessaire. Pour une géométrie plus stable, envoie une vue avant dans `reference_path` et une vue droite cohérente dans `right_reference_path`.
+Renseigne le client, la société/ASBL, le projet et le personnage, puis
+**dépose directement les quatre images dans le Cockpit** : face, arrière,
+gauche et droite. Aucun chemin Windows ni copie manuelle vers ComfyUI n'est
+nécessaire. Les quatre images doivent représenter exactement le même
+personnage, avec la même tenue, une posture et un cadrage cohérents.
 
 Pour le pilote avec une RTX A3000 6 Go, conserve le preset `diagnostic 1024` pour le premier run.
 
