@@ -33,6 +33,7 @@ workflow = json.loads((ROOT / 'workflows/comfyui/avatar_hunyuan3d_shape_api.json
 multi_workflow = json.loads((ROOT / 'workflows/comfyui/avatar_hunyuan3d_multiview_api.json').read_text(encoding='utf-8'))
 server_source = (ROOT / 'scripts/avatar_factory_server.py').read_text(encoding='utf-8')
 runner_source = (ROOT / 'scripts/run_avatar_comfyui.ps1').read_text(encoding='utf-8')
+preflight_source = (ROOT / 'scripts/preflight_avatar_factory.ps1').read_text(encoding='utf-8')
 finalizer_source = (ROOT / 'scripts/blender_finalize_avatar.py').read_text(encoding='utf-8')
 assert cfg['version'] >= 2
 assert cfg['server']['port'] == 8791
@@ -48,7 +49,13 @@ assert workflow['2']['class_type'] == 'LoadImage'
 assert workflow['10']['class_type'] == 'SaveGLB'
 assert multi_workflow['6']['class_type'] == 'Hunyuan3Dv2ConditioningMultiView'
 assert multi_workflow['6']['inputs']['front'] == ['13', 0]
+assert multi_workflow['6']['inputs']['left'] == ['18', 0]
+assert multi_workflow['6']['inputs']['back'] == ['19', 0]
 assert multi_workflow['6']['inputs']['right'] == ['14', 0]
+assert multi_workflow['16']['class_type'] == 'LoadImage'
+assert multi_workflow['17']['class_type'] == 'LoadImage'
+assert multi_workflow['18']['class_type'] == 'CLIPVisionEncode'
+assert multi_workflow['19']['class_type'] == 'CLIPVisionEncode'
 assert multi_workflow['1']['inputs']['ckpt_name'] == 'hunyuan3d-dit-v2-mv_fp16.safetensors'
 assert multi_workflow['15']['class_type'] == 'FluxGuidance'
 assert multi_workflow['15']['inputs']['guidance'] == 3.5
@@ -57,8 +64,15 @@ assert multi_workflow['7']['inputs']['steps'] == 20
 assert multi_workflow['7']['inputs']['cfg'] == 1.0
 assert multi_workflow['10']['class_type'] == 'SaveGLB'
 assert 'right_reference_path' in server_source
+assert 'left_reference_path' in server_source
+assert 'back_reference_path' in server_source
+assert 'Mode multivue incomplet' in server_source
 assert 'seed must be between 1 and 2147483646' in server_source
 assert 'hunyuan3d-dit-v2-mv_fp16.safetensors' in runner_source
+assert 'LeftReferencePath' in runner_source
+assert 'BackReferencePath' in runner_source
+assert "@('front','left','back','right')" in runner_source
+assert "@('front','left','back','right')" in preflight_source
 assert "requiredNodes += 'FluxGuidance'" in runner_source
 assert 'remove_detached_fragments' in finalizer_source
 assert "'fragment_cleanup': fragment_cleanup" in finalizer_source

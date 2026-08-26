@@ -201,8 +201,10 @@ def execute_stage(job, stage):
     if stage == "reference_qa":
         ref = reference_path(job)
         references = [("front", ref)]
-        if payload.get("right_reference_path"):
-            references.append(("right", Path(os.path.expandvars(os.path.expanduser(str(payload["right_reference_path"]))))))
+        for view in ("left", "back", "right"):
+            key = f"{view}_reference_path"
+            if payload.get(key):
+                references.append((view, Path(os.path.expandvars(os.path.expanduser(str(payload[key]))))))
         validated = {}
         for view, path in references:
             if not path.exists() or not path.is_file():
@@ -214,8 +216,9 @@ def execute_stage(job, stage):
                 raise RuntimeError(f"Unsupported {view} reference format: {suffix}")
             validated[view] = {"path": str(path), "bytes": path.stat().st_size}
         output = {"reference_path": str(ref)}
-        if "right" in validated:
-            output["right_reference_path"] = validated["right"]["path"]
+        for view in ("left", "back", "right"):
+            if view in validated:
+                output[f"{view}_reference_path"] = validated[view]["path"]
         set_output(job["id"], **output)
         emit(job["id"], stage, "Références validées", payload=validated)
         return "ok"
@@ -229,8 +232,10 @@ def execute_stage(job, stage):
             "powershell", "-ExecutionPolicy", "Bypass", "-File", str(ROOT / "scripts" / "run_avatar_comfyui.ps1"),
             "-CharacterId", job["character_id"], "-ReferencePath", str(ref), "-OutputPath", str(paths["raw"]), "-Preset", preset,
         ]
-        if payload.get("right_reference_path"):
-            command.extend(["-RightReferencePath", str(Path(os.path.expandvars(os.path.expanduser(str(payload["right_reference_path"])))) )])
+        for view, parameter in (("left", "-LeftReferencePath"), ("back", "-BackReferencePath"), ("right", "-RightReferencePath")):
+            key = f"{view}_reference_path"
+            if payload.get(key):
+                command.extend([parameter, str(Path(os.path.expandvars(os.path.expanduser(str(payload[key])))))])
         seed = int(payload.get("seed") or 2182026)
         if seed < 1 or seed > 2147483646:
             raise RuntimeError("seed must be between 1 and 2147483646")
@@ -241,7 +246,8 @@ def execute_stage(job, stage):
         run_command(job, stage, command, gpu=True)
         if not paths["raw"].exists():
             raise RuntimeError("ComfyUI completed but raw GLB was not materialized")
-        set_output(job["id"], raw_glb=str(paths["raw"]), preset=preset, seed=seed, multiview=bool(payload.get("right_reference_path")))
+        multiview = all(payload.get(f"{view}_reference_path") for view in ("left", "back", "right"))
+        set_output(job["id"], raw_glb=str(paths["raw"]), preset=preset, seed=seed, multiview=multiview, reference_views=4 if multiview else 1)
         return "ok"
 
     if stage == "blender_finalize":
@@ -323,6 +329,11 @@ def create_job(payload):
     missing = [k for k in required if not str(payload.get(k, "")).strip()]
     if missing:
         raise ValueError("Champs requis: " + ", ".join(missing))
+    auxiliary_views = ["left_reference_path", "back_reference_path", "right_reference_path"]
+    supplied_views = [key for key in auxiliary_views if str(payload.get(key, "")).strip()]
+    if supplied_views and len(supplied_views) != len(auxiliary_views):
+        missing_views = [key.replace("_reference_path", "") for key in auxiliary_views if key not in supplied_views]
+        raise ValueError("Mode multivue incomplet. Vues manquantes: " + ", ".join(missing_views))
     character_manifest(str(payload["character_id"]))
     requested_policy = payload.get("billing_policy", "standard_margin")
     if requested_policy not in {"standard_margin", "fixed_plus_overage", "technical_costs_only", "custom"}:
