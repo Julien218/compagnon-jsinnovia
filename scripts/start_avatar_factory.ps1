@@ -161,14 +161,16 @@ function Start-AvatarService {
   $arguments = "-u `"$Script`""
   $process = Start-Process -FilePath $pythonExe -ArgumentList $arguments -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
 
-  $health = Wait-ServiceHealth \
-    -Name $Name \
-    -HealthUrl "http://127.0.0.1:$Port/health" \
-    -ExpectedService $ExpectedService \
-    -Process $process \
-    -RequiredCapability $RequiredCapability \
-    -RequiredCapabilityValue $RequiredCapabilityValue \
-    -ErrorLog $stderr
+  $healthParameters = @{
+    Name = $Name
+    HealthUrl = "http://127.0.0.1:$Port/health"
+    ExpectedService = $ExpectedService
+    Process = $process
+    RequiredCapability = $RequiredCapability
+    RequiredCapabilityValue = $RequiredCapabilityValue
+    ErrorLog = $stderr
+  }
+  $health = Wait-ServiceHealth @healthParameters
 
   Write-Host "$Name healthy (PID $($process.Id))." -ForegroundColor Green
   return [pscustomobject]@{
@@ -228,13 +230,15 @@ $definitions = @(
 $runningServices = @()
 try {
   foreach ($definition in $definitions) {
-    $runningServices += Start-AvatarService \
-      -Name $definition.Name \
-      -Port $definition.Port \
-      -Script $definition.Script \
-      -ExpectedService $definition.ExpectedService \
-      -RequiredCapability $definition.RequiredCapability \
-      -RequiredCapabilityValue $definition.RequiredCapabilityValue
+    $startParameters = @{
+      Name = $definition.Name
+      Port = $definition.Port
+      Script = $definition.Script
+      ExpectedService = $definition.ExpectedService
+      RequiredCapability = $definition.RequiredCapability
+      RequiredCapabilityValue = $definition.RequiredCapabilityValue
+    }
+    $runningServices += Start-AvatarService @startParameters
   }
 } catch {
   Write-Error $_
