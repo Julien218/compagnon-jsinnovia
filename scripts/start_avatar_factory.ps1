@@ -1,23 +1,25 @@
 param(
-  [ValidateRange(5,120)]
+  [ValidateRange(5, 120)]
   [int]$StartupTimeoutSeconds = 30
 )
 
 $ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 
 if (-not $env:COMFYUI_ROOT) {
-  $desktopComfyUI = Join-Path $env:LOCALAPPDATA 'Comfy-Desktop\ComfyUI-Installs\Comfyui\ComfyUI'
-  if (Test-Path -LiteralPath $desktopComfyUI -PathType Container) {
-    $env:COMFYUI_ROOT = $desktopComfyUI
+  $candidate = Join-Path $env:LOCALAPPDATA 'Comfy-Desktop\ComfyUI-Installs\Comfyui\ComfyUI'
+  if (Test-Path -LiteralPath $candidate -PathType Container) {
+    $env:COMFYUI_ROOT = $candidate
   }
 }
 
 if (-not $env:COMFYUI_SHARED_ROOT) {
-  $desktopShared = Join-Path $env:LOCALAPPDATA 'Comfy-Desktop\ComfyUI-Shared'
-  if (Test-Path -LiteralPath $desktopShared -PathType Container) {
-    $env:COMFYUI_SHARED_ROOT = $desktopShared
+  $candidate = Join-Path $env:LOCALAPPDATA 'Comfy-Desktop\ComfyUI-Shared'
+  if (Test-Path -LiteralPath $candidate -PathType Container) {
+    $env:COMFYUI_SHARED_ROOT = $candidate
   }
 }
 
@@ -31,153 +33,168 @@ if (-not $env:BLENDER_EXE) {
     (Join-Path $env:ProgramFiles 'Blender Foundation\Blender 5.1\blender.exe'),
     (Join-Path $env:ProgramFiles 'Blender Foundation\Blender 5.0\blender.exe')
   )
-  $env:BLENDER_EXE = $blenderCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+  $env:BLENDER_EXE = $blenderCandidates |
+    Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+    Select-Object -First 1
 }
 
-$pythonCommand = Get-Command python -ErrorAction Stop
-$pythonExe = $pythonCommand.Source
+$pythonExe = (Get-Command python -ErrorAction Stop).Source
 $runtimeRoot = Join-Path $Root 'runtime\avatar-factory'
 $logRoot = Join-Path $runtimeRoot 'logs'
 New-Item -ItemType Directory -Path $logRoot -Force | Out-Null
 
-function Get-ListeningProcessInfo {
-  param([Parameter(Mandatory=$true)][int]$Port)
+function Get-ListenerInfo {
+  param([Parameter(Mandatory = $true)][int]$Port)
 
-  $connection = Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue | Select-Object -First 1
-  if (-not $connection) { return $null }
+  $connection = Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue |
+    Select-Object -First 1
+  if (-not $connection) {
+    return $null
+  }
 
-  $processInfo = Get-CimInstance Win32_Process -Filter "ProcessId = $($connection.OwningProcess)" -ErrorAction SilentlyContinue
+  $owner = Get-CimInstance Win32_Process -Filter ("ProcessId = {0}" -f $connection.OwningProcess) -ErrorAction SilentlyContinue
   return [pscustomobject]@{
     Port = $Port
     ProcessId = [int]$connection.OwningProcess
-    Name = if ($processInfo) { $processInfo.Name } else { $null }
-    ExecutablePath = if ($processInfo) { $processInfo.ExecutablePath } else { $null }
-    CommandLine = if ($processInfo) { $processInfo.CommandLine } else { $null }
+    Name = if ($owner) { $owner.Name } else { $null }
+    CommandLine = if ($owner) { $owner.CommandLine } else { $null }
   }
 }
 
-function Wait-PortReleased {
+function Wait-PortFree {
   param(
-    [Parameter(Mandatory=$true)][int]$Port,
+    [Parameter(Mandatory = $true)][int]$Port,
     [int]$TimeoutSeconds = 10
   )
 
   $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
   do {
-    if (-not (Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)) { return }
+    $listener = Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue
+    if (-not $listener) {
+      return
+    }
     Start-Sleep -Milliseconds 250
   } while ((Get-Date) -lt $deadline)
 
-  throw "Le port $Port n'a pas été libéré dans le délai imparti."
+  throw ("Port {0} was not released in time." -f $Port)
 }
 
-function Stop-OwnedAvatarService {
+function Stop-OwnedService {
   param(
-    [Parameter(Mandatory=$true)][string]$Name,
-    [Parameter(Mandatory=$true)][int]$Port,
-    [Parameter(Mandatory=$true)][string]$ExpectedScript
+    [Parameter(Mandatory = $true)][string]$Name,
+    [Parameter(Mandatory = $true)][int]$Port,
+    [Parameter(Mandatory = $true)][string]$ExpectedScript
   )
 
-  $listener = Get-ListeningProcessInfo -Port $Port
-  if (-not $listener) { return }
-
-  $scriptName = [System.IO.Path]::GetFileName($ExpectedScript)
-  if ([string]::IsNullOrWhiteSpace($listener.CommandLine) -or $listener.CommandLine -notlike "*$scriptName*") {
-    throw "$Name ne peut pas être redémarré : le port $Port est occupé par un autre processus (PID $($listener.ProcessId), commande: $($listener.CommandLine))."
+  $listener = Get-ListenerInfo -Port $Port
+  if (-not $listener) {
+    return
   }
 
-  Write-Host "Stopping previous $Name process on port $Port (PID $($listener.ProcessId))..." -ForegroundColor Yellow
+  $scriptName = [System.IO.Path]::GetFileName($ExpectedScript)
+  if ([string]::IsNullOrWhiteSpace($listener.CommandLine) -or $listener.CommandLine -notlike ("*{0}*" -f $scriptName)) {
+    throw ("Cannot restart {0}: port {1} belongs to another process. PID={2}; command={3}" -f $Name, $Port, $listener.ProcessId, $listener.CommandLine)
+  }
+
+  Write-Host ("Stopping old {0} process on port {1}. PID={2}" -f $Name, $Port, $listener.ProcessId) -ForegroundColor Yellow
   Stop-Process -Id $listener.ProcessId -Force -ErrorAction Stop
-  Wait-PortReleased -Port $Port
+  Wait-PortFree -Port $Port
 }
 
-function Read-LogTail {
-  param([string]$Path)
-  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return '' }
+function Get-LogTail {
+  param([Parameter(Mandatory = $true)][string]$Path)
+
+  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+    return ''
+  }
   return ((Get-Content -LiteralPath $Path -Tail 40 -ErrorAction SilentlyContinue) -join [Environment]::NewLine)
 }
 
-function Wait-ServiceHealth {
+function Wait-Healthy {
   param(
-    [Parameter(Mandatory=$true)][string]$Name,
-    [Parameter(Mandatory=$true)][string]$HealthUrl,
-    [Parameter(Mandatory=$true)][string]$ExpectedService,
-    [Parameter(Mandatory=$true)][System.Diagnostics.Process]$Process,
+    [Parameter(Mandatory = $true)][string]$Name,
+    [Parameter(Mandatory = $true)][string]$HealthUrl,
+    [Parameter(Mandatory = $true)][string]$ExpectedService,
+    [Parameter(Mandatory = $true)][System.Diagnostics.Process]$Process,
     [string]$RequiredCapability,
     [object]$RequiredCapabilityValue,
-    [Parameter(Mandatory=$true)][string]$ErrorLog
+    [Parameter(Mandatory = $true)][string]$ErrorLog
   )
 
   $deadline = (Get-Date).AddSeconds($StartupTimeoutSeconds)
-  $lastError = $null
+  $lastError = 'No response received.'
 
   do {
+    $Process.Refresh()
     if ($Process.HasExited) {
-      $logTail = Read-LogTail -Path $ErrorLog
-      throw "$Name s'est arrêté pendant son démarrage (code $($Process.ExitCode)). $logTail"
+      $tail = Get-LogTail -Path $ErrorLog
+      throw ("{0} exited during startup. ExitCode={1}. {2}" -f $Name, $Process.ExitCode, $tail)
     }
 
     try {
       $health = Invoke-RestMethod -Uri $HealthUrl -Method Get -TimeoutSec 3
-      if ($health.ok -ne $true) { throw 'Le champ ok n’est pas vrai.' }
+      if ($health.ok -ne $true) {
+        throw 'Health response did not confirm ok=true.'
+      }
       if ([string]$health.service -ne $ExpectedService) {
-        throw "Service inattendu : $($health.service)"
+        throw ("Unexpected service: {0}" -f $health.service)
       }
       if ($RequiredCapability) {
         $property = $health.PSObject.Properties[$RequiredCapability]
         if (-not $property -or $property.Value -ne $RequiredCapabilityValue) {
-          throw "Capacité absente ou invalide : $RequiredCapability"
+          throw ("Missing or invalid capability: {0}" -f $RequiredCapability)
         }
       }
       return $health
-    } catch {
+    }
+    catch {
       $lastError = $_.Exception.Message
       Start-Sleep -Milliseconds 500
     }
   } while ((Get-Date) -lt $deadline)
 
-  $logTail = Read-LogTail -Path $ErrorLog
-  throw "$Name n'est pas sain après $StartupTimeoutSeconds secondes. Dernière erreur : $lastError. $logTail"
+  $tail = Get-LogTail -Path $ErrorLog
+  throw ("{0} is not healthy after {1} seconds. LastError={2}. {3}" -f $Name, $StartupTimeoutSeconds, $lastError, $tail)
 }
 
-function Start-AvatarService {
+function Start-ManagedService {
   param(
-    [Parameter(Mandatory=$true)][string]$Name,
-    [Parameter(Mandatory=$true)][int]$Port,
-    [Parameter(Mandatory=$true)][string]$Script,
-    [Parameter(Mandatory=$true)][string]$ExpectedService,
+    [Parameter(Mandatory = $true)][string]$Name,
+    [Parameter(Mandatory = $true)][int]$Port,
+    [Parameter(Mandatory = $true)][string]$Script,
+    [Parameter(Mandatory = $true)][string]$ExpectedService,
     [string]$RequiredCapability,
     [object]$RequiredCapabilityValue
   )
 
-  Stop-OwnedAvatarService -Name $Name -Port $Port -ExpectedScript $Script
+  Stop-OwnedService -Name $Name -Port $Port -ExpectedScript $Script
 
-  $safeName = ($ExpectedService -replace '[^A-Za-z0-9_-]', '-')
-  $stdout = Join-Path $logRoot "$safeName.stdout.log"
-  $stderr = Join-Path $logRoot "$safeName.stderr.log"
-  Remove-Item -LiteralPath $stdout,$stderr -Force -ErrorAction SilentlyContinue
+  $safeName = $ExpectedService -replace '[^A-Za-z0-9_-]', '-'
+  $stdout = Join-Path $logRoot ("{0}.stdout.log" -f $safeName)
+  $stderr = Join-Path $logRoot ("{0}.stderr.log" -f $safeName)
+  Remove-Item -LiteralPath $stdout, $stderr -Force -ErrorAction SilentlyContinue
 
-  Write-Host "Starting $Name on http://127.0.0.1:$Port ..." -ForegroundColor Green
-  $arguments = "-u `"$Script`""
-  $process = Start-Process -FilePath $pythonExe -ArgumentList $arguments -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+  Write-Host ("Starting {0} on http://127.0.0.1:{1}" -f $Name, $Port) -ForegroundColor Green
+  $arguments = '-u "{0}"' -f $Script
+  $started = Start-Process -FilePath $pythonExe -ArgumentList $arguments -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
 
-  $healthParameters = @{
+  $healthArgs = @{
     Name = $Name
-    HealthUrl = "http://127.0.0.1:$Port/health"
+    HealthUrl = ("http://127.0.0.1:{0}/health" -f $Port)
     ExpectedService = $ExpectedService
-    Process = $process
+    Process = $started
     RequiredCapability = $RequiredCapability
     RequiredCapabilityValue = $RequiredCapabilityValue
     ErrorLog = $stderr
   }
-  $health = Wait-ServiceHealth @healthParameters
+  $health = Wait-Healthy @healthArgs
 
-  Write-Host "$Name healthy (PID $($process.Id))." -ForegroundColor Green
+  Write-Host ("{0} healthy. PID={1}" -f $Name, $started.Id) -ForegroundColor Green
   return [pscustomobject]@{
     name = $Name
     service = $ExpectedService
     port = $Port
-    pid = $process.Id
+    pid = $started.Id
     health = $health
     stdout_log = $stdout
     stderr_log = $stderr
@@ -185,19 +202,20 @@ function Start-AvatarService {
 }
 
 Write-Host '=== JS-Innov.IA Avatar Factory ===' -ForegroundColor Cyan
-Write-Host "Python: $pythonExe"
+Write-Host ("Python: {0}" -f $pythonExe)
 python --version
 
 Write-Host 'Checking ComfyUI endpoint...'
 try {
-  $comfyHealth = Invoke-RestMethod -Uri 'http://127.0.0.1:8188/system_stats' -Method Get -TimeoutSec 5
+  $comfy = Invoke-RestMethod -Uri 'http://127.0.0.1:8188/system_stats' -Method Get -TimeoutSec 5
   Write-Host 'ComfyUI online' -ForegroundColor Green
-  $device = @($comfyHealth.devices) | Select-Object -First 1
+  $device = @($comfy.devices) | Select-Object -First 1
   if ($device -and [double]$device.vram_free -le 0) {
-    Write-Warning 'ComfyUI répond, mais annonce 0 octet de VRAM libre. Vérifiez nvidia-smi avant une génération 3D.'
+    Write-Warning 'ComfyUI reports zero free VRAM. Run nvidia-smi before starting a 3D generation.'
   }
-} catch {
-  Write-Warning 'ComfyUI not reachable on 127.0.0.1:8188. Avatar Factory will start, but 3D jobs will fail until ComfyUI is online.'
+}
+catch {
+  Write-Warning 'ComfyUI is not reachable on 127.0.0.1:8188. The APIs will start, but 3D jobs cannot complete.'
 }
 
 $definitions = @(
@@ -227,54 +245,57 @@ $definitions = @(
   }
 )
 
-$runningServices = @()
-try {
-  foreach ($definition in $definitions) {
-    $startParameters = @{
-      Name = $definition.Name
-      Port = $definition.Port
-      Script = $definition.Script
-      ExpectedService = $definition.ExpectedService
-      RequiredCapability = $definition.RequiredCapability
-      RequiredCapabilityValue = $definition.RequiredCapabilityValue
-    }
-    $runningServices += Start-AvatarService @startParameters
+$running = @()
+foreach ($definition in $definitions) {
+  $startArgs = @{
+    Name = $definition.Name
+    Port = $definition.Port
+    Script = $definition.Script
+    ExpectedService = $definition.ExpectedService
+    RequiredCapability = $definition.RequiredCapability
+    RequiredCapabilityValue = $definition.RequiredCapabilityValue
   }
-} catch {
-  Write-Error $_
-  throw
+  $running += Start-ManagedService @startArgs
 }
 
 if ($env:COCKPIT_URL -and $env:FINOPS_INGEST_KEY) {
   $finopsScript = Join-Path $PSScriptRoot 'sync_finops.py'
-  $existingFinOps = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
-    $_.CommandLine -and $_.CommandLine -like '*sync_finops.py*--watch*'
+  $existingWatchers = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+    Where-Object { $_.CommandLine -and $_.CommandLine -like '*sync_finops.py*--watch*' }
+  foreach ($watcher in @($existingWatchers)) {
+    Stop-Process -Id $watcher.ProcessId -Force -ErrorAction SilentlyContinue
   }
-  foreach ($processInfo in @($existingFinOps)) {
-    Stop-Process -Id $processInfo.ProcessId -Force -ErrorAction SilentlyContinue
-  }
-  $finopsStdout = Join-Path $logRoot 'finops.stdout.log'
-  $finopsStderr = Join-Path $logRoot 'finops.stderr.log'
-  $finopsArguments = "-u `"$finopsScript`" --watch"
-  $finopsProcess = Start-Process -FilePath $pythonExe -ArgumentList $finopsArguments -WindowStyle Hidden -PassThru -RedirectStandardOutput $finopsStdout -RedirectStandardError $finopsStderr
-  Write-Host "FinOps synchronization started (PID $($finopsProcess.Id))." -ForegroundColor Green
-} else {
-  Write-Warning 'FinOps cloud sync disabled until COCKPIT_URL and FINOPS_INGEST_KEY are configured.'
+
+  $finopsOut = Join-Path $logRoot 'finops.stdout.log'
+  $finopsErr = Join-Path $logRoot 'finops.stderr.log'
+  Remove-Item -LiteralPath $finopsOut, $finopsErr -Force -ErrorAction SilentlyContinue
+  $finopsArguments = '-u "{0}" --watch' -f $finopsScript
+  $finopsProcess = Start-Process -FilePath $pythonExe -ArgumentList $finopsArguments -WindowStyle Hidden -PassThru -RedirectStandardOutput $finopsOut -RedirectStandardError $finopsErr
+  Write-Host ("FinOps synchronization started. PID={0}" -f $finopsProcess.Id) -ForegroundColor Green
+}
+else {
+  Write-Warning 'FinOps cloud sync is disabled until COCKPIT_URL and FINOPS_INGEST_KEY are configured.'
 }
 
 $commit = $null
-try { $commit = (& git rev-parse HEAD 2>$null).Trim() } catch {}
+try {
+  $commit = (& git rev-parse HEAD 2>$null).Trim()
+}
+catch {
+  $commit = $null
+}
+
 $state = [ordered]@{
   started_at = (Get-Date).ToUniversalTime().ToString('o')
   repository_root = $Root
   commit = $commit
-  services = $runningServices
+  services = $running
 }
 $statePath = Join-Path $runtimeRoot 'services.json'
 $state | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $statePath -Encoding UTF8
 
 Write-Host ''
 Write-Host 'Avatar Factory is ready.' -ForegroundColor Cyan
-$runningServices | Select-Object name,service,port,pid | Format-Table -AutoSize
-Write-Host "Runtime state: $statePath"
-Write-Host "Logs: $logRoot"
+$running | Select-Object name, service, port, pid | Format-Table -AutoSize
+Write-Host ("Runtime state: {0}" -f $statePath)
+Write-Host ("Logs: {0}" -f $logRoot)
