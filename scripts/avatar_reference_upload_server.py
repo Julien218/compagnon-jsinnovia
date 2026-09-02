@@ -5,6 +5,7 @@ import json
 import os
 import re
 import uuid
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
@@ -13,7 +14,9 @@ ROOT = Path(__file__).resolve().parents[1]
 CONFIG = json.loads((ROOT / "config" / "avatar-factory.json").read_text(encoding="utf-8"))
 WORKSPACE = ROOT / CONFIG["paths"]["workspace"]
 REFERENCES = WORKSPACE / "references"
+CHARACTERS = ROOT / "characters"
 REFERENCES.mkdir(parents=True, exist_ok=True)
+CHARACTERS.mkdir(parents=True, exist_ok=True)
 
 HOST = os.getenv("AVATAR_REFERENCE_UPLOAD_HOST", "127.0.0.1")
 PORT = int(os.getenv("AVATAR_REFERENCE_UPLOAD_PORT", "8792"))
@@ -46,6 +49,39 @@ def validate_signature(data, mime):
     return False
 
 
+def ensure_generic_manifest(character_id, relative_path, display_name, mime_type, subject_type="auto"):
+    """Create the minimum manifest expected by Avatar Factory for any uploaded subject.
+
+    Existing curated manifests are never overwritten. This keeps branded characters intact while
+    allowing a cat, a cup, a person, a mascot, or any other object to start from a newly uploaded
+    reference without manual filesystem preparation.
+    """
+    safe_id = safe_slug(character_id, "avatar")
+    character_folder = CHARACTERS / safe_id
+    character_folder.mkdir(parents=True, exist_ok=True)
+    manifest_path = character_folder / "manifest.json"
+    if manifest_path.exists():
+        return {"path": str(manifest_path.resolve()), "relative_path": str(manifest_path.relative_to(ROOT)).replace("\\", "/"), "created": False}
+
+    manifest = {
+        "schema_version": 1,
+        "character_id": safe_id,
+        "display_name": str(display_name or safe_id).strip()[:120],
+        "subject_type": safe_slug(subject_type, "auto"),
+        "generic_uploaded_subject": True,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "reference": {
+            "canonical_path": str(relative_path).replace("\\", "/"),
+            "mime_type": mime_type,
+            "source": "avatar-reference-upload",
+        },
+    }
+    temporary = manifest_path.with_suffix(".json.tmp")
+    temporary.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    temporary.replace(manifest_path)
+    return {"path": str(manifest_path.resolve()), "relative_path": str(manifest_path.relative_to(ROOT)).replace("\\", "/"), "created": True}
+
+
 def save_reference(payload):
     mime = str(payload.get("mime_type") or "").lower()
     if mime not in ALLOWED_MIME:
@@ -74,15 +110,26 @@ def save_reference(payload):
     filename = f"{original}-{uuid.uuid4().hex[:12]}{ALLOWED_MIME[mime]}"
     target = folder / filename
     target.write_bytes(data)
+    relative_path = str(target.relative_to(ROOT)).replace("\\", "/")
+    manifest = ensure_generic_manifest(
+        character_id,
+        relative_path,
+        payload.get("display_name") or original,
+        mime,
+        payload.get("subject_type") or "auto",
+    )
 
     return {
         "ok": True,
         "reference_path": str(target.resolve()),
-        "relative_path": str(target.relative_to(ROOT)).replace("\\", "/"),
+        "relative_path": relative_path,
         "file_name": filename,
         "mime_type": mime,
         "bytes": len(data),
         "character_id": character_id,
+        "manifest_path": manifest["path"],
+        "manifest_relative_path": manifest["relative_path"],
+        "manifest_created": manifest["created"],
     }
 
 
@@ -135,6 +182,7 @@ class Handler(BaseHTTPRequestHandler):
                 "port": PORT,
                 "max_bytes": MAX_BYTES,
                 "references_dir": str(REFERENCES.resolve()),
+                "generic_manifest_creation": True,
             })
         return self._json(404, {"error": "Route inconnue"})
 

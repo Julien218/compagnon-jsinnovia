@@ -10,6 +10,7 @@ on:
       - 'scripts/avatar_runtime_qa.py'
       - 'scripts/test_avatar_runtime_qa.py'
       - 'scripts/avatar_reference_upload_server.py'
+      - 'scripts/test_avatar_reference_upload.py'
       - 'scripts/avatar_preview_server.py'
       - 'scripts/run_avatar_comfyui.ps1'
       - 'scripts/blender_finalize_avatar.py'
@@ -35,3 +36,5 @@ jobs:
         run: python scripts/validate_avatar_factory.py
       - name: Test runtime QA decisions
         run: python scripts/test_avatar_runtime_qa.py
+      - name: Test generic subject manifests
+        run: python scripts/test_avatar_reference_upload.py
