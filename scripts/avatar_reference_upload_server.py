@@ -4,6 +4,7 @@ import binascii
 import json
 import os
 import re
+import threading
 import uuid
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -32,6 +33,7 @@ ALLOWED_MIME = {
     "image/jpeg": ".jpg",
     "image/webp": ".webp",
 }
+MANIFEST_WRITE_LOCK = threading.Lock()
 
 
 def safe_slug(value, fallback="avatar"):
@@ -60,25 +62,34 @@ def ensure_generic_manifest(character_id, relative_path, display_name, mime_type
     character_folder = CHARACTERS / safe_id
     character_folder.mkdir(parents=True, exist_ok=True)
     manifest_path = character_folder / "manifest.json"
-    if manifest_path.exists():
-        return {"path": str(manifest_path.resolve()), "relative_path": str(manifest_path.relative_to(ROOT)).replace("\\", "/"), "created": False}
 
-    manifest = {
-        "schema_version": 1,
-        "character_id": safe_id,
-        "display_name": str(display_name or safe_id).strip()[:120],
-        "subject_type": safe_slug(subject_type, "auto"),
-        "generic_uploaded_subject": True,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "reference": {
-            "canonical_path": str(relative_path).replace("\\", "/"),
-            "mime_type": mime_type,
-            "source": "avatar-reference-upload",
-        },
-    }
-    temporary = manifest_path.with_suffix(".json.tmp")
-    temporary.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
-    temporary.replace(manifest_path)
+    # ThreadingHTTPServer can receive multiple first uploads for the same subject.
+    # Serialize the existence check and atomic replacement so exactly one request
+    # creates the manifest while all other requests preserve that canonical file.
+    with MANIFEST_WRITE_LOCK:
+        if manifest_path.exists():
+            return {"path": str(manifest_path.resolve()), "relative_path": str(manifest_path.relative_to(ROOT)).replace("\\", "/"), "created": False}
+
+        manifest = {
+            "schema_version": 1,
+            "character_id": safe_id,
+            "display_name": str(display_name or safe_id).strip()[:120],
+            "subject_type": safe_slug(subject_type, "auto"),
+            "generic_uploaded_subject": True,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "reference": {
+                "canonical_path": str(relative_path).replace("\\", "/"),
+                "mime_type": mime_type,
+                "source": "avatar-reference-upload",
+            },
+        }
+        temporary = manifest_path.with_name(f".{manifest_path.name}.{uuid.uuid4().hex}.tmp")
+        try:
+            temporary.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+            temporary.replace(manifest_path)
+        finally:
+            temporary.unlink(missing_ok=True)
+
     return {"path": str(manifest_path.resolve()), "relative_path": str(manifest_path.relative_to(ROOT)).replace("\\", "/"), "created": True}
 
 

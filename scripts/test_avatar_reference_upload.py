@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import base64
+from concurrent.futures import ThreadPoolExecutor
 import importlib.util
 import json
 import tempfile
@@ -47,6 +48,19 @@ class GenericManifestTests(unittest.TestCase):
         self.assertEqual(manifest["subject_type"], "animal")
         self.assertTrue(manifest["generic_uploaded_subject"])
         self.assertEqual(manifest["reference"]["canonical_path"], result["relative_path"])
+
+    def test_concurrent_first_uploads_create_one_valid_manifest(self):
+        payload = self.payload("tasse-concurrente")
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            results = list(executor.map(lambda _: module.save_reference(payload), range(8)))
+
+        self.assertEqual(sum(result["manifest_created"] for result in results), 1)
+        self.assertTrue(all(result["ok"] for result in results))
+        manifest_paths = {result["manifest_path"] for result in results}
+        self.assertEqual(len(manifest_paths), 1)
+        manifest = json.loads(Path(results[0]["manifest_path"]).read_text(encoding="utf-8"))
+        self.assertEqual(manifest["character_id"], "tasse-concurrente")
+        self.assertTrue(manifest["generic_uploaded_subject"])
 
     def test_existing_curated_manifest_is_never_overwritten(self):
         folder = module.CHARACTERS / "canari-officiel"
