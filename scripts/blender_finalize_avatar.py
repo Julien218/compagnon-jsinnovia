@@ -1,5 +1,5 @@
 import json
-import math
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -8,22 +8,112 @@ try:
     import bpy
     from mathutils import Vector
 except ImportError as exc:
-    raise SystemExit('Run inside Blender') from exc
+    raise SystemExit("Run inside Blender") from exc
 
-args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
+args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 if len(args) < 2:
-    raise SystemExit('Usage: blender --background --python scripts/blender_finalize_avatar.py -- input.glb output.glb')
+    raise SystemExit("Usage: blender --background --python scripts/blender_finalize_avatar.py -- input.glb output.glb")
 
 src = Path(args[0]).resolve()
 dst = Path(args[1]).resolve()
 if not src.exists():
-    raise SystemExit(f'Input GLB not found: {src}')
+    raise SystemExit(f"Input GLB not found: {src}")
+
+ROOT = Path(__file__).resolve().parents[1]
+SUBJECT_KINDS = {"auto", "person", "animal", "bird", "object", "other"}
+RIG_MODES = {"auto", "none", "humanoid", "quadruped", "avian", "generic"}
+
+
+def load_json(path):
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def normalized_subject_kind(value):
+    value = str(value or "auto").strip().lower()
+    return value if value in SUBJECT_KINDS else "auto"
+
+
+def default_rig_mode(subject_kind):
+    return {
+        "person": "humanoid",
+        "animal": "quadruped",
+        "bird": "avian",
+        "object": "none",
+        "other": "generic",
+        "auto": "none",
+    }.get(subject_kind, "none")
+
+
+def normalized_rig_mode(value, subject_kind):
+    value = str(value or "auto").strip().lower()
+    if value not in RIG_MODES:
+        value = "auto"
+    return default_rig_mode(subject_kind) if value == "auto" else value
+
+
+def job_metadata_from_database():
+    config = load_json(ROOT / "config" / "avatar-factory.json")
+    workspace = str(config.get("paths", {}).get("workspace") or "runtime/avatar-factory")
+    database = ROOT / workspace / "avatar_factory.sqlite3"
+    if not database.exists():
+        return {}
+    job_id = src.parent.name
+    try:
+        connection = sqlite3.connect(database)
+        connection.row_factory = sqlite3.Row
+        row = connection.execute(
+            "SELECT character_id,input_json FROM jobs WHERE id=? LIMIT 1",
+            (job_id,),
+        ).fetchone()
+        connection.close()
+        if not row:
+            return {}
+        payload = json.loads(row["input_json"] or "{}")
+        if not isinstance(payload, dict):
+            payload = {}
+        return {
+            **payload,
+            "character_id": row["character_id"] or payload.get("character_id"),
+        }
+    except (OSError, sqlite3.Error, json.JSONDecodeError):
+        return {}
+
+
+def production_metadata():
+    candidates = [
+        Path(str(src) + ".meta.json"),
+        src.with_suffix(".meta.json"),
+    ]
+    metadata = next((load_json(candidate) for candidate in candidates if candidate.exists()), {})
+    if not metadata:
+        metadata = job_metadata_from_database()
+    character_id = str(metadata.get("character_id") or "").strip()
+    manifest_path = metadata.get("manifest_path")
+    if not manifest_path and character_id:
+        manifest_path = ROOT / "characters" / character_id / "manifest.json"
+    manifest = load_json(Path(manifest_path)) if manifest_path else {}
+    subject = manifest.get("subject") if isinstance(manifest.get("subject"), dict) else {}
+    subject_kind = normalized_subject_kind(metadata.get("subject_kind") or subject.get("kind"))
+    rig_mode = normalized_rig_mode(metadata.get("rig_mode") or subject.get("rig_mode"), subject_kind)
+    return {
+        "character_id": character_id or manifest.get("id") or "avatar",
+        "subject_kind": subject_kind,
+        "rig_mode": rig_mode,
+        "manifest_path": str(Path(manifest_path).resolve()) if manifest_path else None,
+    }
+
+
+meta = production_metadata()
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=str(src))
-meshes = [o for o in bpy.context.scene.objects if o.type == 'MESH']
+meshes = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
 if not meshes:
-    raise SystemExit('No mesh in GLB')
+    raise SystemExit("No mesh in GLB")
 
 
 def mesh_connectivity(objects):
@@ -67,10 +157,10 @@ def mesh_connectivity(objects):
 
     largest = max(component_sizes, default=0)
     return {
-        'connected_components': len(component_sizes),
-        'largest_component_vertices': largest,
-        'largest_component_ratio': round(largest / max(1, total_vertices), 4),
-        'vertices': total_vertices,
+        "connected_components": len(component_sizes),
+        "largest_component_vertices": largest,
+        "largest_component_ratio": round(largest / max(1, total_vertices), 4),
+        "vertices": total_vertices,
     }
 
 
@@ -109,116 +199,249 @@ def remove_detached_fragments(objects, min_dominant_ratio=0.80):
         detached = [vertex for component in components if component is not dominant for vertex in component]
         removed_components += len(components) - 1
         removed_vertices += len(detached)
-        bmesh.ops.delete(bm, geom=detached, context='VERTS')
+        bmesh.ops.delete(bm, geom=detached, context="VERTS")
         bm.to_mesh(mesh)
         mesh.update()
         bm.free()
-    return {'removed_components': removed_components, 'removed_vertices': removed_vertices}
+    return {"removed_components": removed_components, "removed_vertices": removed_vertices}
 
-# Normalize transforms, remove detached scan artefacts and cap excessive geometry.
+
 for obj in meshes:
     bpy.context.view_layer.objects.active = obj
     obj.select_set(True)
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
     if len(obj.data.polygons) > 180000:
-        mod = obj.modifiers.new('AvatarFactoryDecimate', 'DECIMATE')
-        mod.ratio = max(0.12, 180000 / max(1, len(obj.data.polygons)))
-        bpy.ops.object.modifier_apply(modifier=mod.name)
+        modifier = obj.modifiers.new("AvatarFactoryDecimate", "DECIMATE")
+        modifier.ratio = max(0.12, 180000 / max(1, len(obj.data.polygons)))
+        bpy.ops.object.modifier_apply(modifier=modifier.name)
     obj.select_set(False)
 
 fragment_cleanup = remove_detached_fragments(meshes)
 
-# World-space bounding box drives a generic mascot rig.
 points = []
 for obj in meshes:
     for corner in obj.bound_box:
         points.append(obj.matrix_world @ Vector(corner))
-mins = Vector((min(p.x for p in points), min(p.y for p in points), min(p.z for p in points)))
-maxs = Vector((max(p.x for p in points), max(p.y for p in points), max(p.z for p in points)))
+mins = Vector((min(point.x for point in points), min(point.y for point in points), min(point.z for point in points)))
+maxs = Vector((max(point.x for point in points), max(point.y for point in points), max(point.z for point in points)))
 size = maxs - mins
 center = (mins + maxs) * 0.5
 height = max(size.z, 0.001)
 width = max(size.x, 0.001)
+depth = max(size.y, 0.001)
 
-bpy.ops.object.armature_add(enter_editmode=True, location=(center.x, center.y, mins.z))
-arm = bpy.context.object
-arm.name = 'AvatarFactoryRig'
-eb = arm.data.edit_bones
-root = eb[0]
-root.name = 'root'
-root.head = (center.x, center.y, mins.z)
-root.tail = (center.x, center.y, mins.z + height * 0.15)
 
-body = eb.new('body')
-body.parent = root
-body.use_connect = True
-body.head = root.tail
-body.tail = (center.x, center.y, mins.z + height * 0.62)
+def add_bone(edit_bones, name, head, tail, parent=None, connected=False):
+    bone = edit_bones.new(name)
+    bone.head = head
+    bone.tail = tail
+    if parent is not None:
+        bone.parent = parent
+        bone.use_connect = connected
+    return bone
 
-head = eb.new('head')
-head.parent = body
-head.use_connect = True
-head.head = body.tail
-head.tail = (center.x, center.y, mins.z + height * 0.92)
 
-for name, sign in [('wing.L', -1), ('wing.R', 1)]:
-    bone = eb.new(name)
-    bone.parent = body
-    bone.head = (center.x, center.y, mins.z + height * 0.55)
-    bone.tail = (center.x + sign * width * 0.45, center.y, mins.z + height * 0.48)
+def create_rig(rig_mode):
+    if rig_mode == "none":
+        return None
 
-bpy.ops.object.mode_set(mode='OBJECT')
+    bpy.ops.object.armature_add(enter_editmode=True, location=(center.x, center.y, mins.z))
+    armature = bpy.context.object
+    armature.name = f"AvatarFactoryRig.{rig_mode}"
+    edit_bones = armature.data.edit_bones
+    root = edit_bones[0]
+    root.name = "root"
+    root.head = (center.x, center.y, mins.z)
+    root.tail = (center.x, center.y, mins.z + height * 0.10)
 
-# Automatic weights. If a mesh cannot be weighted, keep it rigidly attached to body rather than failing the whole job.
-for obj in meshes:
-    bpy.ops.object.select_all(action='DESELECT')
-    obj.select_set(True)
-    arm.select_set(True)
-    bpy.context.view_layer.objects.active = arm
-    try:
-        bpy.ops.object.parent_set(type='ARMATURE_AUTO')
-    except Exception:
-        obj.parent = arm
-        obj.parent_type = 'BONE'
-        obj.parent_bone = 'body'
+    if rig_mode == "humanoid":
+        hips = add_bone(edit_bones, "hips", root.tail, (center.x, center.y, mins.z + height * 0.38), root, True)
+        spine = add_bone(edit_bones, "spine", hips.tail, (center.x, center.y, mins.z + height * 0.68), hips, True)
+        neck = add_bone(edit_bones, "neck", spine.tail, (center.x, center.y, mins.z + height * 0.78), spine, True)
+        add_bone(edit_bones, "head", neck.tail, (center.x, center.y, mins.z + height * 0.96), neck, True)
+        for name, sign in (("arm.L", -1), ("arm.R", 1)):
+            add_bone(
+                edit_bones,
+                name,
+                (center.x, center.y, mins.z + height * 0.66),
+                (center.x + sign * width * 0.45, center.y, mins.z + height * 0.52),
+                spine,
+            )
+        for name, sign in (("leg.L", -1), ("leg.R", 1)):
+            add_bone(
+                edit_bones,
+                name,
+                (center.x + sign * width * 0.14, center.y, mins.z + height * 0.37),
+                (center.x + sign * width * 0.16, center.y, mins.z + height * 0.03),
+                hips,
+            )
+    elif rig_mode == "quadruped":
+        body = add_bone(
+            edit_bones,
+            "body",
+            root.tail,
+            (center.x, center.y, mins.z + height * 0.60),
+            root,
+            True,
+        )
+        neck = add_bone(
+            edit_bones,
+            "neck",
+            body.tail,
+            (center.x, center.y - depth * 0.18, mins.z + height * 0.74),
+            body,
+        )
+        add_bone(
+            edit_bones,
+            "head",
+            neck.tail,
+            (center.x, center.y - depth * 0.30, mins.z + height * 0.86),
+            neck,
+        )
+        for name, x_sign, y_sign in (
+            ("leg.front.L", -1, -1),
+            ("leg.front.R", 1, -1),
+            ("leg.back.L", -1, 1),
+            ("leg.back.R", 1, 1),
+        ):
+            add_bone(
+                edit_bones,
+                name,
+                (
+                    center.x + x_sign * width * 0.22,
+                    center.y + y_sign * depth * 0.18,
+                    mins.z + height * 0.46,
+                ),
+                (
+                    center.x + x_sign * width * 0.24,
+                    center.y + y_sign * depth * 0.18,
+                    mins.z + height * 0.04,
+                ),
+                body,
+            )
+        add_bone(
+            edit_bones,
+            "tail",
+            (center.x, center.y + depth * 0.20, mins.z + height * 0.54),
+            (center.x, center.y + depth * 0.52, mins.z + height * 0.68),
+            body,
+        )
+    else:
+        body = add_bone(edit_bones, "body", root.tail, (center.x, center.y, mins.z + height * 0.62), root, True)
+        add_bone(edit_bones, "head", body.tail, (center.x, center.y, mins.z + height * 0.92), body, True)
+        appendage_names = ("wing.L", "wing.R") if rig_mode == "avian" else ("appendage.L", "appendage.R")
+        for name, sign in zip(appendage_names, (-1, 1)):
+            add_bone(
+                edit_bones,
+                name,
+                (center.x, center.y, mins.z + height * 0.55),
+                (center.x + sign * width * 0.45, center.y, mins.z + height * 0.48),
+                body,
+            )
 
-# Lightweight idle loop: breathing/head tilt/wing micro movement.
-bpy.context.scene.frame_start = 1
-bpy.context.scene.frame_end = 96
-arm.animation_data_create()
-action = bpy.data.actions.new('idle')
-arm.animation_data.action = action
-for frame, body_z, head_y, wing in [(1,0,0,0),(24,0.015,0.035,0.06),(48,0,0,0),(72,-0.01,-0.025,-0.04),(96,0,0,0)]:
-    bpy.context.scene.frame_set(frame)
-    pb = arm.pose.bones
-    pb['body'].location.z = height * body_z
-    pb['head'].rotation_mode = 'XYZ'
-    pb['head'].rotation_euler.y = head_y
-    pb['wing.L'].rotation_mode = 'XYZ'
-    pb['wing.R'].rotation_mode = 'XYZ'
-    pb['wing.L'].rotation_euler.y = wing
-    pb['wing.R'].rotation_euler.y = -wing
-    for name in ['body','head','wing.L','wing.R']:
-        pb[name].keyframe_insert(data_path='location', frame=frame)
-        pb[name].keyframe_insert(data_path='rotation_euler', frame=frame)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    return armature
 
-# Neutral camera-independent output for Three.js / R3F validation.
+
+arm = create_rig(meta["rig_mode"])
+
+if arm is not None:
+    fallback_bone = "body" if arm.data.bones.get("body") else "hips" if arm.data.bones.get("hips") else "root"
+    for obj in meshes:
+        bpy.ops.object.select_all(action="DESELECT")
+        obj.select_set(True)
+        arm.select_set(True)
+        bpy.context.view_layer.objects.active = arm
+        try:
+            bpy.ops.object.parent_set(type="ARMATURE_AUTO")
+        except Exception:
+            obj.parent = arm
+            obj.parent_type = "BONE"
+            obj.parent_bone = fallback_bone
+
+
+def insert_keyframes(pose_bone, frame):
+    pose_bone.keyframe_insert(data_path="location", frame=frame)
+    pose_bone.keyframe_insert(data_path="rotation_euler", frame=frame)
+
+
+def create_idle_animation(armature):
+    if armature is None:
+        return []
+    bpy.context.scene.frame_start = 1
+    bpy.context.scene.frame_end = 96
+    armature.animation_data_create()
+    action = bpy.data.actions.new("idle")
+    armature.animation_data.action = action
+    pose = armature.pose.bones
+
+    motion_bone = pose.get("body") or pose.get("spine") or pose.get("hips") or pose.get("root")
+    head_bone = pose.get("head")
+    side_bones = [
+        pose.get("wing.L") or pose.get("appendage.L") or pose.get("arm.L"),
+        pose.get("wing.R") or pose.get("appendage.R") or pose.get("arm.R"),
+    ]
+    tail_bone = pose.get("tail")
+
+    for frame, body_z, head_y, side_rotation in (
+        (1, 0.0, 0.0, 0.0),
+        (24, 0.012, 0.028, 0.04),
+        (48, 0.0, 0.0, 0.0),
+        (72, -0.008, -0.020, -0.03),
+        (96, 0.0, 0.0, 0.0),
+    ):
+        bpy.context.scene.frame_set(frame)
+        motion_bone.location.z = height * body_z
+        motion_bone.rotation_mode = "XYZ"
+        insert_keyframes(motion_bone, frame)
+        if head_bone:
+            head_bone.rotation_mode = "XYZ"
+            head_bone.rotation_euler.y = head_y
+            insert_keyframes(head_bone, frame)
+        for index, bone in enumerate(side_bones):
+            if bone:
+                bone.rotation_mode = "XYZ"
+                bone.rotation_euler.y = side_rotation * (-1 if index == 1 else 1)
+                insert_keyframes(bone, frame)
+        if tail_bone:
+            tail_bone.rotation_mode = "XYZ"
+            tail_bone.rotation_euler.x = side_rotation
+            insert_keyframes(tail_bone, frame)
+    return ["idle"]
+
+
+animations = create_idle_animation(arm)
+
 dst.parent.mkdir(parents=True, exist_ok=True)
-bpy.ops.export_scene.gltf(filepath=str(dst), export_format='GLB', export_apply=True, export_animations=True)
+bpy.ops.export_scene.gltf(
+    filepath=str(dst),
+    export_format="GLB",
+    export_apply=True,
+    export_animations=bool(animations),
+)
 connectivity = mesh_connectivity(meshes)
 report = {
-    'status': 'candidate_ready',
-    'input': str(src),
-    'output': str(dst),
-    'meshes': len(meshes),
-    'polygons': sum(len(o.data.polygons) for o in meshes),
+    "status": "candidate_ready",
+    "input": str(src),
+    "output": str(dst),
+    "character_id": meta["character_id"],
+    "subject_kind": meta["subject_kind"],
+    "rig_mode": meta["rig_mode"],
+    "static_asset": arm is None,
+    "meshes": len(meshes),
+    "polygons": sum(len(obj.data.polygons) for obj in meshes),
     **connectivity,
-    'fragment_cleanup': fragment_cleanup,
-    'armature': arm.name,
-    'bones': [b.name for b in arm.data.bones],
-    'animations': ['idle'],
-    'note': 'Automatic validation rig; visual review required before final VRM/publication.'
+    "fragment_cleanup": fragment_cleanup,
+    "armature": arm.name if arm else None,
+    "bones": [bone.name for bone in arm.data.bones] if arm else [],
+    "animations": animations,
+    "manifest_path": meta["manifest_path"],
+    "note": (
+        "Static GLB: no rig was added because the subject is an object or automatic safe mode."
+        if arm is None
+        else "Automatic validation rig; visual review required before final VRM/publication."
+    ),
 }
-dst.with_suffix('.qa.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
-print('AVATAR_FACTORY_FINAL=' + str(dst))
-print(json.dumps(report))
+dst.with_suffix(".qa.json").write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+print("AVATAR_FACTORY_FINAL=" + str(dst))
+print(json.dumps(report, ensure_ascii=False))
