@@ -1,6 +1,9 @@
 {
-  "version": 2,
-  "server": {"host": "127.0.0.1", "port": 8791},
+  "version": 3,
+  "server": {
+    "host": "127.0.0.1",
+    "port": 8791
+  },
   "paths": {
     "workspace": "runtime/avatar-factory",
     "comfyui": "C:/Users/PC User/AI/ComfyUI_windows_portable/ComfyUI_windows_portable/ComfyUI",
@@ -13,7 +16,31 @@
     "runtime_qa",
     "human_approval"
   ],
-  "approval_gates": ["human_approval"],
+  "approval_gates": [
+    "human_approval"
+  ],
+  "capabilities": {
+    "generic_subjects": true,
+    "auto_manifest": true,
+    "single_view": true,
+    "four_view": true,
+    "subject_kinds": [
+      "auto",
+      "person",
+      "animal",
+      "bird",
+      "object",
+      "other"
+    ],
+    "rig_modes": [
+      "auto",
+      "none",
+      "humanoid",
+      "quadruped",
+      "avian",
+      "generic"
+    ]
+  },
   "routing": {
     "default": "local",
     "allow_cloud": false,
@@ -28,7 +55,7 @@
     "max_validation_asset_mib": 25,
     "max_web_asset_mib": 15,
     "max_connected_components": 12,
-    "min_largest_component_ratio": 0.80,
+    "min_largest_component_ratio": 0.8,
     "require_visual_approval_before_publish": true
   },
   "finops": {
@@ -39,8 +66,8 @@
     "electricity_kwh_rate": 0.35,
     "estimated_gpu_kw": 0.12,
     "estimated_cpu_kw": 0.06,
-    "local_llm_per_million_input_tokens": 0.20,
-    "local_llm_per_million_output_tokens": 0.40,
+    "local_llm_per_million_input_tokens": 0.2,
+    "local_llm_per_million_output_tokens": 0.4,
     "default_markup_percent": 50,
     "minimum_margin_percent": 30
   }
