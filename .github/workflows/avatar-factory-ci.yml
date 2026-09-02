@@ -22,7 +22,7 @@ on:
       - 'QUICKSTART_AVATAR_FACTORY.md'
       - '.github/workflows/avatar-factory-ci.yml'
   push:
-    branches: ['feature/avatar-factory-finops']
+    branches: ['main', 'feature/avatar-factory-finops']
 
 jobs:
   validate:
