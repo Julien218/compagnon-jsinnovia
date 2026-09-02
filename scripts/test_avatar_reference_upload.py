@@ -19,6 +19,7 @@ class GenericManifestTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         root = Path(self.temp.name)
+        module.ROOT = root
         module.REFERENCES = root / "workspace" / "references"
         module.CHARACTERS = root / "characters"
         module.REFERENCES.mkdir(parents=True, exist_ok=True)
