@@ -7,6 +7,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+$ScriptPath = $PSCommandPath
 $Root = Split-Path -Parent $PSScriptRoot
 $RuntimeRoot = Join-Path $Root 'runtime\jsinnovia-startup'
 $LogPath = Join-Path $RuntimeRoot 'startup.log'
@@ -36,13 +37,15 @@ function Write-StartupLog {
 
 function Install-JsInnoviaStartup {
   New-Item -ItemType Directory -Path $StartupFolder -Force | Out-Null
-  $scriptPath = $MyInvocation.MyCommand.Path
+  if ([string]::IsNullOrWhiteSpace($ScriptPath)) {
+    throw 'Chemin du script start_jsinnovia.ps1 introuvable.'
+  }
   $cmd = @(
     '@echo off',
-    ('powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}"' -f $scriptPath)
+    ('powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}"' -f $ScriptPath)
   ) -join [Environment]::NewLine
   Set-Content -LiteralPath $StartupCmd -Value $cmd -Encoding ASCII
-  Write-StartupLog "Demarrage automatique installe pour la session Windows actuelle." 'OK'
+  Write-StartupLog 'Demarrage automatique installe pour la session Windows actuelle.' 'OK'
   Write-StartupLog "Entree de demarrage : $StartupCmd" 'INFO'
 }
 
@@ -87,9 +90,9 @@ if ($InstallStartup) {
 
 Write-StartupLog '=== JS-Innov.IA Windows startup ===' 'INFO'
 
-# Recharge toujours la cle de jumelage depuis le profil utilisateur sans l'afficher.
 $userBridgeKey = [Environment]::GetEnvironmentVariable('LOCAL_LLM_BRIDGE_KEY', 'User')
 if ([string]::IsNullOrWhiteSpace($userBridgeKey)) {
+  Remove-Item Env:LOCAL_LLM_BRIDGE_KEY -ErrorAction SilentlyContinue
   Write-StartupLog 'LOCAL_LLM_BRIDGE_KEY absente du profil utilisateur. Le Cockpit sera ouvert, mais le bridge local ne pourra pas demarrer.' 'WARN'
 } else {
   $env:LOCAL_LLM_BRIDGE_KEY = $userBridgeKey.Trim()
@@ -101,7 +104,6 @@ if (-not $env:JSINNOVIA_AGENT_URL) {
   $env:JSINNOVIA_AGENT_URL = 'https://jsinnovia-agent-production.up.railway.app'
 }
 
-# Demarre Ollama uniquement si son API locale n'est pas deja joignable.
 if (Test-OllamaApi) {
   Write-StartupLog 'Ollama est deja disponible sur 127.0.0.1:11434.' 'OK'
 } else {
@@ -136,15 +138,15 @@ if ($models.Count -gt 0) {
   Write-StartupLog 'Aucun modele Ollama autorise detecte (qwen3.5:4b / llama3.2:3b).' 'WARN'
 }
 
+$activeBridgeKey = [Environment]::GetEnvironmentVariable('LOCAL_LLM_BRIDGE_KEY', 'Process')
 $canStartBridge = (
-  -not [string]::IsNullOrWhiteSpace($env:LOCAL_LLM_BRIDGE_KEY) -and
+  -not [string]::IsNullOrWhiteSpace($activeBridgeKey) -and
   $models.Count -gt 0 -and
   (Test-Path -LiteralPath $BridgeScript -PathType Leaf)
 )
 
 if ($canStartBridge) {
   try {
-    # Sans -Foreground : le worker Python est lance en arriere-plan et journalise par start_local_ai_bridge.ps1.
     & $BridgeScript
     Write-StartupLog 'Bridge IA local demarre en arriere-plan.' 'OK'
   } catch {
