@@ -1,7 +1,7 @@
 param(
   [switch]$InstallStartup,
   [switch]$RemoveStartup,
-  [switch]$NoBrowser
+  [switch]$OpenWeb
 )
 
 $ErrorActionPreference = 'Stop'
@@ -40,21 +40,26 @@ function Install-JsInnoviaStartup {
   if ([string]::IsNullOrWhiteSpace($ScriptPath)) {
     throw 'Chemin du script start_jsinnovia.ps1 introuvable.'
   }
+
+  # Ce demarrage ne lance PAS le Cockpit web.
+  # Le Cockpit desktop (.exe) conserve son propre demarrage Windows existant.
   $cmd = @(
     '@echo off',
     ('powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}"' -f $ScriptPath)
   ) -join [Environment]::NewLine
+
   Set-Content -LiteralPath $StartupCmd -Value $cmd -Encoding ASCII
-  Write-StartupLog 'Demarrage automatique installe pour la session Windows actuelle.' 'OK'
-  Write-StartupLog "Entree de demarrage : $StartupCmd" 'INFO'
+  Write-StartupLog 'Demarrage automatique IA locale installe pour la session Windows actuelle.' 'OK'
+  Write-StartupLog 'Le Cockpit desktop (.exe) n est pas modifie et reste gere par son demarrage Windows existant.' 'INFO'
+  Write-StartupLog "Entree de demarrage IA : $StartupCmd" 'INFO'
 }
 
 function Remove-JsInnoviaStartup {
   if (Test-Path -LiteralPath $StartupCmd) {
     Remove-Item -LiteralPath $StartupCmd -Force
-    Write-StartupLog 'Demarrage automatique JS-Innov.IA supprime.' 'OK'
+    Write-StartupLog 'Demarrage automatique IA locale JS-Innov.IA supprime.' 'OK'
   } else {
-    Write-StartupLog 'Aucune entree de demarrage automatique JS-Innov.IA a supprimer.' 'INFO'
+    Write-StartupLog 'Aucune entree de demarrage automatique IA locale a supprimer.' 'INFO'
   }
 }
 
@@ -90,10 +95,11 @@ if ($InstallStartup) {
 
 Write-StartupLog '=== JS-Innov.IA Windows startup ===' 'INFO'
 
+# Recharge la cle depuis le profil utilisateur sans jamais afficher sa valeur.
 $userBridgeKey = [Environment]::GetEnvironmentVariable('LOCAL_LLM_BRIDGE_KEY', 'User')
 if ([string]::IsNullOrWhiteSpace($userBridgeKey)) {
   Remove-Item Env:LOCAL_LLM_BRIDGE_KEY -ErrorAction SilentlyContinue
-  Write-StartupLog 'LOCAL_LLM_BRIDGE_KEY absente du profil utilisateur. Le Cockpit sera ouvert, mais le bridge local ne pourra pas demarrer.' 'WARN'
+  Write-StartupLog 'LOCAL_LLM_BRIDGE_KEY absente du profil utilisateur. Le bridge local ne pourra pas demarrer.' 'WARN'
 } else {
   $env:LOCAL_LLM_BRIDGE_KEY = $userBridgeKey.Trim()
   Write-StartupLog ('Cle de jumelage locale chargee ({0} caracteres).' -f $env:LOCAL_LLM_BRIDGE_KEY.Length) 'OK'
@@ -127,7 +133,7 @@ if (Test-OllamaApi) {
   if ($ollamaReady) {
     Write-StartupLog 'Ollama est maintenant disponible.' 'OK'
   } else {
-    Write-StartupLog 'Ollama reste indisponible apres 30 secondes. Le Cockpit sera ouvert avec les providers cloud disponibles.' 'WARN'
+    Write-StartupLog 'Ollama reste indisponible apres 30 secondes. Les providers cloud restent disponibles.' 'WARN'
   }
 }
 
@@ -160,13 +166,17 @@ if ($canStartBridge) {
   }
 }
 
-if (-not $NoBrowser) {
+# Par defaut, ne jamais ouvrir la version web : le Cockpit desktop (.exe) est deja lance par Windows.
+# -OpenWeb reste disponible uniquement pour un depannage manuel explicite.
+if ($OpenWeb) {
   try {
     Start-Process $CockpitUrl | Out-Null
-    Write-StartupLog "Cockpit ouvert : $CockpitUrl" 'OK'
+    Write-StartupLog "Cockpit web ouvert manuellement : $CockpitUrl" 'OK'
   } catch {
-    Write-StartupLog ("Impossible d'ouvrir le Cockpit : {0}" -f $_.Exception.Message) 'ERROR'
+    Write-StartupLog ("Impossible d'ouvrir le Cockpit web : {0}" -f $_.Exception.Message) 'ERROR'
   }
+} else {
+  Write-StartupLog 'Cockpit web non lance. Le Cockpit desktop (.exe) reste prioritaire.' 'OK'
 }
 
 Write-StartupLog "Journal : $LogPath" 'INFO'
