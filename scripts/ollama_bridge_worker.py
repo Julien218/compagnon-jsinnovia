@@ -3,7 +3,7 @@
 
 Security model:
 - Ollama remains on 127.0.0.1:11434; no inbound public port is opened.
-- This process polls the Railway agent over HTTPS.
+- This process polls the IONOS-hosted NOVA agent over HTTPS.
 - Only the allow-listed Ollama chat models can run.
 - The worker cannot execute shell commands, touch Cockpit data or call arbitrary URLs.
 """
@@ -17,7 +17,7 @@ import time
 import urllib.error
 import urllib.request
 
-AGENT_URL = os.getenv("JSINNOVIA_AGENT_URL", "https://jsinnovia-agent-production.up.railway.app").rstrip("/")
+AGENT_URL = os.getenv("JSINNOVIA_AGENT_URL", "https://backend.jsinnovia.com").rstrip("/")
 BRIDGE_KEY = os.getenv("LOCAL_LLM_BRIDGE_KEY", "").strip()
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 WORKER_ID = os.getenv("LOCAL_LLM_WORKER_ID", f"windows:{socket.gethostname()}")[:120]
@@ -175,7 +175,7 @@ def submit_result(job_id, models, result=None, error=None):
 
 def main():
     if not BRIDGE_KEY:
-        print("LOCAL_LLM_BRIDGE_KEY is required. Pair the Windows worker with Railway before starting.", file=sys.stderr)
+        print("LOCAL_LLM_BRIDGE_KEY is required. Pair the Windows worker with NOVA before starting.", file=sys.stderr)
         return 2
     if not AGENT_URL.startswith("https://") and "127.0.0.1" not in AGENT_URL and "localhost" not in AGENT_URL:
         print("JSINNOVIA_AGENT_URL must use HTTPS.", file=sys.stderr)
