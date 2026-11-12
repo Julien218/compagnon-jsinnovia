@@ -15,7 +15,7 @@ if (-not $env:LOCAL_LLM_BRIDGE_KEY) {
 }
 
 if (-not $env:JSINNOVIA_AGENT_URL) {
-  $env:JSINNOVIA_AGENT_URL = 'https://jsinnovia-agent-production.up.railway.app'
+  $env:JSINNOVIA_AGENT_URL = 'https://backend.jsinnovia.com'
 }
 if (-not $env:OLLAMA_URL) {
   $env:OLLAMA_URL = 'http://127.0.0.1:11434'
